@@ -3,326 +3,280 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aleksandr Fedorov | AI Engineer</title>
-    <meta name="description" content="Aleksandr Fedorov - AI/ML Engineer. Building production-grade AI systems. Competition reports, technical deep-dives, and lessons from the frontier.">
-    <meta property="og:title" content="Aleksandr Fedorov | AI Engineer">
-    <meta property="og:description" content="Building production-grade AI systems. Competition reports, technical deep-dives, and lessons from the frontier.">
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="https://alexff91.github.io">
+    <title>Aleksandr Fedorov</title>
+    <meta name="description" content="AI Engineer. Building retrieval systems and legal AI.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&family=Newsreader:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
     <style>
-        :root {
-            --bg-primary: #0a0a0f;
-            --bg-secondary: #12121a;
-            --bg-card: #16161f;
-            --bg-card-hover: #1a1a25;
-            --accent-cyan: #00f0ff;
-            --accent-magenta: #ff00aa;
-            --accent-purple: #8b5cf6;
-            --accent-green: #00ff88;
-            --text-primary: #e4e4e7;
-            --text-secondary: #a1a1aa;
-            --text-muted: #71717a;
-            --border: #27272a;
-            --glow-cyan: 0 0 20px rgba(0, 240, 255, 0.3);
-            --glow-magenta: 0 0 20px rgba(255, 0, 170, 0.3);
-        }
-
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
+        :root {
+            --black: #111;
+            --white: #fafaf9;
+            --gray: #888;
+            --light: #e8e6e3;
+            --accent: #e63946;
+        }
+
         body {
-            font-family: 'Inter', -apple-system, sans-serif;
-            background: var(--bg-primary);
-            color: var(--text-primary);
-            line-height: 1.7;
-            overflow-x: hidden;
+            font-family: 'Space Grotesk', sans-serif;
+            background: var(--white);
+            color: var(--black);
+            -webkit-font-smoothing: antialiased;
         }
 
-        /* Animated background grid */
-        .bg-grid {
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background-image:
-                linear-gradient(rgba(0, 240, 255, 0.03) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(0, 240, 255, 0.03) 1px, transparent 1px);
-            background-size: 60px 60px;
-            z-index: 0;
-            animation: gridMove 20s linear infinite;
-        }
-        @keyframes gridMove {
-            0% { transform: translate(0, 0); }
-            100% { transform: translate(60px, 60px); }
-        }
+        ::selection { background: var(--accent); color: white; }
 
-        /* Glow orbs */
-        .orb {
-            position: fixed;
-            border-radius: 50%;
-            filter: blur(80px);
-            opacity: 0.15;
-            z-index: 0;
-            animation: orbFloat 15s ease-in-out infinite;
-        }
-        .orb-1 { width: 400px; height: 400px; background: var(--accent-cyan); top: -100px; right: -100px; }
-        .orb-2 { width: 300px; height: 300px; background: var(--accent-magenta); bottom: -50px; left: -50px; animation-delay: -7s; }
-        .orb-3 { width: 200px; height: 200px; background: var(--accent-purple); top: 50%; left: 50%; animation-delay: -3s; }
-        @keyframes orbFloat {
-            0%, 100% { transform: translate(0, 0); }
-            33% { transform: translate(30px, -20px); }
-            66% { transform: translate(-20px, 30px); }
-        }
+        a { color: inherit; }
 
-        .content { position: relative; z-index: 1; }
-
-        /* Header */
-        header {
-            padding: 2rem 0;
-            border-bottom: 1px solid var(--border);
-            backdrop-filter: blur(10px);
-            background: rgba(10, 10, 15, 0.8);
-            position: sticky;
-            top: 0;
-            z-index: 100;
-        }
-        .header-inner {
-            max-width: 1100px;
-            margin: 0 auto;
-            padding: 0 2rem;
+        /* ── Nav ── */
+        nav {
+            padding: 2rem 3rem;
             display: flex;
             justify-content: space-between;
-            align-items: center;
+            align-items: baseline;
+            border-bottom: 1.5px solid var(--black);
         }
-        .logo {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 1.3rem;
+        .nav-name {
+            font-family: 'Space Mono', monospace;
+            font-size: 0.85rem;
             font-weight: 700;
-            color: var(--accent-cyan);
             text-decoration: none;
-            letter-spacing: -0.5px;
+            letter-spacing: -0.3px;
         }
-        .logo span { color: var(--text-muted); font-weight: 300; }
-        nav a {
-            color: var(--text-secondary);
-            text-decoration: none;
-            margin-left: 2rem;
-            font-size: 0.9rem;
-            font-weight: 500;
-            transition: color 0.2s;
-            font-family: 'JetBrains Mono', monospace;
-        }
-        nav a:hover { color: var(--accent-cyan); }
-
-        /* Hero */
-        .hero {
-            max-width: 1100px;
-            margin: 0 auto;
-            padding: 6rem 2rem 4rem;
-        }
-        .hero-tag {
-            font-family: 'JetBrains Mono', monospace;
+        .nav-links { display: flex; gap: 2rem; }
+        .nav-links a {
             font-size: 0.8rem;
-            color: var(--accent-green);
-            margin-bottom: 1rem;
-            letter-spacing: 2px;
-            text-transform: uppercase;
+            text-decoration: none;
+            color: var(--gray);
+            transition: color 0.15s;
+            font-weight: 500;
+        }
+        .nav-links a:hover { color: var(--black); }
+
+        /* ── Hero ── */
+        .hero {
+            padding: 8rem 3rem 6rem;
+            max-width: 720px;
         }
         .hero h1 {
-            font-size: 3.5rem;
+            font-size: clamp(3rem, 8vw, 5.5rem);
             font-weight: 700;
-            line-height: 1.1;
-            margin-bottom: 1.5rem;
-            background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent-cyan) 50%, var(--accent-magenta) 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-        .hero p {
-            font-size: 1.15rem;
-            color: var(--text-secondary);
-            max-width: 600px;
-            line-height: 1.8;
-        }
-        .hero-links {
-            margin-top: 2rem;
-            display: flex;
-            gap: 1rem;
-            flex-wrap: wrap;
-        }
-        .hero-links a {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.85rem;
-            color: var(--accent-cyan);
-            text-decoration: none;
-            padding: 0.6rem 1.2rem;
-            border: 1px solid rgba(0, 240, 255, 0.3);
-            border-radius: 4px;
-            transition: all 0.3s;
-        }
-        .hero-links a:hover {
-            background: rgba(0, 240, 255, 0.1);
-            box-shadow: var(--glow-cyan);
-        }
-
-        /* Posts section */
-        .section {
-            max-width: 1100px;
-            margin: 0 auto;
-            padding: 3rem 2rem;
-        }
-        .section-title {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.8rem;
-            color: var(--accent-magenta);
-            letter-spacing: 3px;
-            text-transform: uppercase;
+            line-height: 0.95;
+            letter-spacing: -3px;
             margin-bottom: 2rem;
         }
-
-        /* Post cards */
-        .post-card {
-            background: var(--bg-card);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 2rem;
-            margin-bottom: 1.5rem;
-            transition: all 0.3s;
-            text-decoration: none;
-            display: block;
-            position: relative;
-            overflow: hidden;
+        .hero h1 .italic {
+            font-family: 'Newsreader', serif;
+            font-style: italic;
+            font-weight: 400;
         }
-        .post-card::before {
-            content: '';
-            position: absolute;
-            top: 0; left: 0;
-            width: 3px;
-            height: 100%;
-            background: linear-gradient(to bottom, var(--accent-cyan), var(--accent-magenta));
-            opacity: 0;
-            transition: opacity 0.3s;
+        .hero p {
+            font-size: 1.1rem;
+            color: var(--gray);
+            line-height: 1.7;
+            max-width: 480px;
         }
-        .post-card:hover {
-            background: var(--bg-card-hover);
-            border-color: rgba(0, 240, 255, 0.2);
-            transform: translateX(4px);
-        }
-        .post-card:hover::before { opacity: 1; }
-        .post-meta {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.75rem;
-            color: var(--text-muted);
-            margin-bottom: 0.8rem;
+        .hero-links {
+            margin-top: 2.5rem;
             display: flex;
-            gap: 1.5rem;
+            gap: 0.5rem;
+        }
+        .hero-links a {
+            font-family: 'Space Mono', monospace;
+            font-size: 0.75rem;
+            text-decoration: none;
+            padding: 0.55rem 1.1rem;
+            border: 1.5px solid var(--black);
+            border-radius: 100px;
+            transition: all 0.2s;
+        }
+        .hero-links a:hover {
+            background: var(--black);
+            color: var(--white);
+        }
+
+        /* ── Divider ── */
+        .divider {
+            border: none;
+            border-top: 1.5px solid var(--black);
+            margin: 0 3rem;
+        }
+
+        /* ── Writing section ── */
+        .writing {
+            padding: 4rem 3rem;
+        }
+        .section-label {
+            font-family: 'Space Mono', monospace;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--gray);
+            margin-bottom: 3rem;
+        }
+
+        .post {
+            display: block;
+            text-decoration: none;
+            padding: 2rem 0;
+            border-bottom: 1px solid var(--light);
+            transition: padding-left 0.2s;
+        }
+        .post:first-of-type { border-top: 1px solid var(--light); }
+        .post:hover { padding-left: 1rem; }
+
+        .post-date {
+            font-family: 'Space Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--gray);
+            margin-bottom: 0.5rem;
+        }
+        .post-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+            margin-bottom: 0.4rem;
+            line-height: 1.3;
+        }
+        .post-desc {
+            font-size: 0.9rem;
+            color: var(--gray);
+            line-height: 1.6;
+        }
+        .post-tags {
+            margin-top: 0.6rem;
+            display: flex;
+            gap: 0.4rem;
+        }
+        .post-tags span {
+            font-family: 'Space Mono', monospace;
+            font-size: 0.6rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 0.25rem 0.6rem;
+            background: var(--light);
+            border-radius: 2px;
+        }
+
+        /* ── Number ── */
+        .stat-row {
+            display: flex;
+            gap: 4rem;
+            padding: 4rem 3rem;
             flex-wrap: wrap;
         }
-        .post-meta .tag {
-            color: var(--accent-purple);
-            background: rgba(139, 92, 246, 0.1);
-            padding: 0.15rem 0.5rem;
-            border-radius: 3px;
+        .stat {
+            display: flex;
+            flex-direction: column;
         }
-        .post-card h2 {
-            font-size: 1.4rem;
-            font-weight: 600;
-            margin-bottom: 0.6rem;
-            color: var(--text-primary);
+        .stat-number {
+            font-family: 'Space Mono', monospace;
+            font-size: 2.5rem;
+            font-weight: 700;
+            letter-spacing: -2px;
         }
-        .post-card p {
-            color: var(--text-secondary);
-            font-size: 0.95rem;
-        }
-
-        /* Featured badge */
-        .featured-badge {
-            display: inline-block;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.65rem;
-            color: var(--accent-green);
-            background: rgba(0, 255, 136, 0.1);
-            border: 1px solid rgba(0, 255, 136, 0.2);
-            padding: 0.2rem 0.6rem;
-            border-radius: 3px;
-            margin-bottom: 1rem;
-            letter-spacing: 1px;
-            text-transform: uppercase;
+        .stat-number .accent { color: var(--accent); }
+        .stat-label {
+            font-size: 0.75rem;
+            color: var(--gray);
+            margin-top: 0.3rem;
         }
 
-        /* Footer */
+        /* ── Footer ── */
         footer {
-            border-top: 1px solid var(--border);
-            padding: 3rem 2rem;
-            text-align: center;
-            color: var(--text-muted);
-            font-size: 0.85rem;
-            font-family: 'JetBrains Mono', monospace;
+            padding: 3rem;
+            border-top: 1.5px solid var(--black);
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+        footer span {
+            font-family: 'Space Mono', monospace;
+            font-size: 0.7rem;
+            color: var(--gray);
         }
 
-        /* Responsive */
-        @media (max-width: 768px) {
-            .hero h1 { font-size: 2.2rem; }
-            .header-inner { flex-direction: column; gap: 1rem; }
-            nav a { margin-left: 1rem; }
+        @media (max-width: 640px) {
+            nav, .hero, .writing, .stat-row, footer { padding-left: 1.5rem; padding-right: 1.5rem; }
+            .divider { margin: 0 1.5rem; }
+            .hero { padding-top: 5rem; padding-bottom: 4rem; }
+            .stat-row { gap: 2rem; }
         }
     </style>
 </head>
 <body>
-    <div class="bg-grid"></div>
-    <div class="orb orb-1"></div>
-    <div class="orb orb-2"></div>
-    <div class="orb orb-3"></div>
 
-    <div class="content">
-        <header>
-            <div class="header-inner">
-                <a href="/" class="logo">alexff91<span>.dev</span></a>
-                <nav>
-                    <a href="/">home</a>
-                    <a href="/posts/arlc-2026">latest post</a>
-                    <a href="https://github.com/alexff91" target="_blank">github</a>
-                    <a href="https://linkedin.com/in/alexff91" target="_blank">linkedin</a>
-                </nav>
-            </div>
-        </header>
+    <nav>
+        <a href="/" class="nav-name">Aleksandr Fedorov</a>
+        <div class="nav-links">
+            <a href="/posts/arlc-2026">Writing</a>
+            <a href="https://github.com/alexff91" target="_blank">GitHub</a>
+            <a href="https://linkedin.com/in/alexff91" target="_blank">LinkedIn</a>
+        </div>
+    </nav>
 
-        <section class="hero">
-            <div class="hero-tag">// AI Engineer</div>
-            <h1>Aleksandr Fedorov</h1>
-            <p>
-                Building production-grade AI systems. RAG pipelines, legal AI, and competition engineering.
-                Exploring the frontier of retrieval-augmented generation.
-            </p>
-            <div class="hero-links">
-                <a href="https://github.com/alexff91" target="_blank">GitHub</a>
-                <a href="https://github.com/alexff91/legal-champ" target="_blank">Legal RAG Repo</a>
-            </div>
-        </section>
+    <section class="hero">
+        <h1>Engineer who<br>builds <span class="italic">retrieval</span><br>systems.</h1>
+        <p>
+            I work on production AI &mdash; RAG pipelines, legal document intelligence,
+            and systems that find the right page in a thousand-page corpus.
+        </p>
+        <div class="hero-links">
+            <a href="https://github.com/alexff91/legal-champ" target="_blank">Latest Project</a>
+            <a href="/posts/arlc-2026">Read the Writeup</a>
+        </div>
+    </section>
 
-        <section class="section">
-            <div class="section-title">// Recent Posts</div>
+    <hr class="divider">
 
-            <a href="/posts/arlc-2026" class="post-card">
-                <div class="featured-badge">Featured</div>
-                <div class="post-meta">
-                    <span>2026-03-22</span>
-                    <span class="tag">RAG</span>
-                    <span class="tag">Legal AI</span>
-                    <span class="tag">Competition</span>
-                </div>
-                <h2>The Grounding Trap: Building a Legal RAG System for ARLC 2026</h2>
-                <p>
-                    How we built a document-routed RAG system for the Agentic Legal RAG Challenge at Dubai AI Week.
-                    96% routing coverage, precision-focused grounding, and the F-beta math mistake that cost us 40% of our score.
-                    Full architecture, charts, and lessons learned.
-                </p>
-            </a>
-        </section>
-
-        <footer>
-            <p>alexff91 // Built with raw HTML and ambition // 2026</p>
-        </footer>
+    <div class="stat-row">
+        <div class="stat">
+            <div class="stat-number">900</div>
+            <div class="stat-label">Legal questions answered</div>
+        </div>
+        <div class="stat">
+            <div class="stat-number">298</div>
+            <div class="stat-label">Documents indexed</div>
+        </div>
+        <div class="stat">
+            <div class="stat-number">96<span class="accent">%</span></div>
+            <div class="stat-label">Routing coverage</div>
+        </div>
+        <div class="stat">
+            <div class="stat-number">52<span class="accent">min</span></div>
+            <div class="stat-label">Full pipeline runtime</div>
+        </div>
     </div>
+
+    <hr class="divider">
+
+    <section class="writing">
+        <div class="section-label">Writing</div>
+
+        <a href="/posts/arlc-2026" class="post">
+            <div class="post-date">March 22, 2026</div>
+            <div class="post-title">The Grounding Trap: Building a Legal RAG System for ARLC 2026</div>
+            <div class="post-desc">
+                How document routing beat vector search, why citing too many pages killed our score,
+                and what the F-beta formula actually means when your gold standard is 3 pages.
+            </div>
+            <div class="post-tags">
+                <span>RAG</span>
+                <span>Legal AI</span>
+                <span>Competition</span>
+                <span>Dubai AI Week</span>
+            </div>
+        </a>
+    </section>
+
+    <footer>
+        <span>&copy; 2026 Aleksandr Fedorov</span>
+        <span>alexff91</span>
+    </footer>
+
 </body>
 </html>
