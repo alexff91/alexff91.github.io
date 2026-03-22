@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Grounding Trap: Building a Legal RAG System for ARLC 2026 | Aleksandr Fedorov</title>
+    <meta name="description" content="How we built a document-routed RAG system for the Agentic Legal RAG Challenge at Dubai AI Week. Architecture, results, F-beta analysis, and lessons learned.">
+    <meta property="og:title" content="The Grounding Trap: Building a Legal RAG System for ARLC 2026">
+    <meta property="og:description" content="96% document routing, dual-model LLM, and the F-beta math mistake that cost us 40% of our score.">
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://alexff91.github.io/posts/arlc-2026">
+    <meta property="og:image" content="https://alexff91.github.io/posts/arlc-2026/img/architecture.png">
+    <meta name="twitter:card" content="summary_large_image">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #12121a;
+            --bg-card: #16161f;
+            --accent-cyan: #00f0ff;
+            --accent-magenta: #ff00aa;
+            --accent-purple: #8b5cf6;
+            --accent-green: #00ff88;
+            --accent-yellow: #fbbf24;
+            --text-primary: #e4e4e7;
+            --text-secondary: #a1a1aa;
+            --text-muted: #71717a;
+            --border: #27272a;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.8;
+        }
+
+        /* Grid BG */
+        .bg-grid {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background-image:
+                linear-gradient(rgba(0, 240, 255, 0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 240, 255, 0.02) 1px, transparent 1px);
+            background-size: 60px 60px;
+            z-index: 0;
+        }
+
+        .content { position: relative; z-index: 1; }
+
+        /* Header */
+        header {
+            padding: 1.5rem 0;
+            border-bottom: 1px solid var(--border);
+            backdrop-filter: blur(10px);
+            background: rgba(10, 10, 15, 0.9);
+            position: sticky; top: 0; z-index: 100;
+        }
+        .header-inner {
+            max-width: 900px; margin: 0 auto; padding: 0 2rem;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .logo {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.1rem; font-weight: 700;
+            color: var(--accent-cyan); text-decoration: none;
+        }
+        .logo span { color: var(--text-muted); font-weight: 300; }
+        nav a {
+            color: var(--text-secondary); text-decoration: none;
+            margin-left: 1.5rem; font-size: 0.85rem;
+            font-family: 'JetBrains Mono', monospace;
+            transition: color 0.2s;
+        }
+        nav a:hover { color: var(--accent-cyan); }
+
+        /* Article */
+        article {
+            max-width: 900px; margin: 0 auto; padding: 3rem 2rem 6rem;
+        }
+        .article-meta {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem; color: var(--text-muted);
+            margin-bottom: 1rem;
+            display: flex; gap: 1.5rem; flex-wrap: wrap;
+        }
+        .article-meta .tag {
+            color: var(--accent-purple);
+            background: rgba(139, 92, 246, 0.1);
+            padding: 0.15rem 0.5rem; border-radius: 3px;
+        }
+        article h1 {
+            font-size: 2.8rem; font-weight: 700; line-height: 1.15;
+            margin-bottom: 1.5rem;
+            background: linear-gradient(135deg, var(--text-primary) 0%, var(--accent-cyan) 100%);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+        }
+        .article-subtitle {
+            font-size: 1.2rem; color: var(--text-secondary); margin-bottom: 2rem;
+            border-left: 3px solid var(--accent-magenta); padding-left: 1rem;
+        }
+
+        /* Score banner */
+        .score-banner {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 1rem; margin: 2rem 0;
+        }
+        .score-item {
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: 6px; padding: 1.2rem; text-align: center;
+        }
+        .score-item .label {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem; color: var(--text-muted);
+            text-transform: uppercase; letter-spacing: 1px;
+        }
+        .score-item .value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.8rem; font-weight: 700; margin-top: 0.3rem;
+        }
+        .score-item .value.cyan { color: var(--accent-cyan); }
+        .score-item .value.green { color: var(--accent-green); }
+        .score-item .value.magenta { color: var(--accent-magenta); }
+        .score-item .value.purple { color: var(--accent-purple); }
+        .score-item .value.yellow { color: var(--accent-yellow); }
+
+        /* Headings */
+        article h2 {
+            font-size: 1.6rem; font-weight: 600; margin: 3rem 0 1rem;
+            color: var(--accent-cyan);
+            border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;
+        }
+        article h3 {
+            font-size: 1.2rem; font-weight: 600; margin: 2rem 0 0.8rem;
+            color: var(--text-primary);
+        }
+        article p { margin-bottom: 1.2rem; color: var(--text-secondary); }
+        article strong { color: var(--text-primary); }
+        article ul, article ol {
+            margin: 1rem 0 1.5rem 1.5rem; color: var(--text-secondary);
+        }
+        article li { margin-bottom: 0.5rem; }
+
+        /* Figures */
+        .figure {
+            margin: 2rem 0; background: var(--bg-card);
+            border: 1px solid var(--border); border-radius: 8px;
+            overflow: hidden;
+        }
+        .figure img {
+            width: 100%; display: block;
+        }
+        .figure figcaption {
+            padding: 0.8rem 1.2rem;
+            font-size: 0.85rem; color: var(--text-muted);
+            font-style: italic; border-top: 1px solid var(--border);
+        }
+
+        /* Tables */
+        table {
+            width: 100%; border-collapse: collapse; margin: 1.5rem 0;
+            font-size: 0.9rem;
+        }
+        th {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px;
+            color: var(--accent-cyan); text-align: left;
+            padding: 0.8rem; border-bottom: 2px solid var(--accent-cyan);
+        }
+        td {
+            padding: 0.7rem 0.8rem; border-bottom: 1px solid var(--border);
+            color: var(--text-secondary);
+        }
+        tr:hover td { background: rgba(0, 240, 255, 0.03); }
+        td strong { color: var(--accent-green); }
+
+        /* Code blocks */
+        code {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85em; color: var(--accent-green);
+            background: rgba(0, 255, 136, 0.05);
+            padding: 0.15em 0.4em; border-radius: 3px;
+        }
+        pre {
+            background: var(--bg-card); border: 1px solid var(--border);
+            border-radius: 6px; padding: 1.2rem; margin: 1.5rem 0;
+            overflow-x: auto;
+        }
+        pre code {
+            background: none; padding: 0; font-size: 0.8rem;
+            color: var(--text-secondary); line-height: 1.6;
+        }
+
+        /* Callout boxes */
+        .callout {
+            background: var(--bg-card); border-radius: 6px;
+            padding: 1.5rem; margin: 1.5rem 0;
+            border-left: 3px solid var(--accent-yellow);
+        }
+        .callout-title {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem; color: var(--accent-yellow);
+            margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 1px;
+        }
+        .callout.danger { border-left-color: var(--accent-magenta); }
+        .callout.danger .callout-title { color: var(--accent-magenta); }
+        .callout.success { border-left-color: var(--accent-green); }
+        .callout.success .callout-title { color: var(--accent-green); }
+
+        /* References */
+        .references {
+            font-size: 0.85rem; color: var(--text-muted);
+        }
+        .references p { margin-bottom: 0.5rem; }
+
+        /* Footer */
+        footer {
+            border-top: 1px solid var(--border);
+            padding: 2rem; text-align: center;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem; color: var(--text-muted);
+        }
+        footer a { color: var(--accent-cyan); text-decoration: none; }
+
+        @media (max-width: 768px) {
+            article h1 { font-size: 1.8rem; }
+            .score-banner { grid-template-columns: repeat(3, 1fr); }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-grid"></div>
+    <div class="content">
+
+    <header>
+        <div class="header-inner">
+            <a href="/" class="logo">alexff91<span>.dev</span></a>
+            <nav>
+                <a href="/">home</a>
+                <a href="https://github.com/alexff91/legal-champ" target="_blank">source code</a>
+                <a href="https://github.com/alexff91" target="_blank">github</a>
+            </nav>
+        </div>
+    </header>
+
+    <article>
+        <div class="article-meta">
+            <span>March 22, 2026</span>
+            <span>Team Magentic</span>
+            <span class="tag">RAG</span>
+            <span class="tag">Legal AI</span>
+            <span class="tag">Competition</span>
+            <span class="tag">Dubai AI Week</span>
+        </div>
+
+        <h1>The Grounding Trap: Building a Legal RAG System for ARLC 2026</h1>
+
+        <p class="article-subtitle">
+            How we built a document-routed RAG pipeline for the Agentic RAG Legal Challenge at Dubai AI Week &mdash;
+            96% routing coverage, dual-model LLM strategy, and the F-beta math mistake that cost us 40% of our score.
+        </p>
+
+        <!-- Score Banner -->
+        <div class="score-banner">
+            <div class="score-item">
+                <div class="label">Final Score</div>
+                <div class="value magenta">0.435</div>
+            </div>
+            <div class="score-item">
+                <div class="label">Deterministic</div>
+                <div class="value cyan">0.840</div>
+            </div>
+            <div class="score-item">
+                <div class="label">Assistant</div>
+                <div class="value green">0.746</div>
+            </div>
+            <div class="score-item">
+                <div class="label">Grounding</div>
+                <div class="value yellow">0.542</div>
+            </div>
+            <div class="score-item">
+                <div class="label">TTFT</div>
+                <div class="value green">1.000</div>
+            </div>
+            <div class="score-item">
+                <div class="label">Format</div>
+                <div class="value green">0.987</div>
+            </div>
+        </div>
+
+        <!-- Abstract -->
+        <h2>Abstract</h2>
+        <p>
+            We describe our approach to the <strong>Agentic RAG Legal Challenge (ARLC) 2026</strong>, a benchmark competition
+            for production-grade AI systems in the legal domain. Our system combines regex-based document routing (96% coverage)
+            with full-document LLM context, a hybrid retrieval stack (TF-IDF + BM25 + text-embedding-3-large with Reciprocal Rank Fusion),
+            and a dual-model LLM strategy (GPT-5.4-mini for deterministic types, GPT-5.2 for free-text).
+        </p>
+        <p>
+            Our key finding: <strong>grounding precision dominates the scoring function</strong> &mdash; even with F-beta &beta;=2.5
+            favoring recall, over-citing pages by 4x destroys the score. We document this "grounding trap" and other lessons for
+            practitioners building legal RAG systems.
+        </p>
+
+        <!-- 1. Introduction -->
+        <h2>1. The Competition</h2>
+        <p>
+            ARLC 2026 is an international competition at Dubai AI Week evaluating AI systems on legal question answering
+            over DIFC (Dubai International Financial Centre) documents &mdash; court decisions, laws, regulations, and practice directions.
+        </p>
+        <p>The scoring formula creates interesting optimization dynamics:</p>
+        <pre><code>Total = (0.7 &times; S_det + 0.3 &times; S_asst) &times; G &times; T &times; F</code></pre>
+        <p>
+            Where <code>S_det</code> is deterministic accuracy, <code>S_asst</code> is free-text quality,
+            <code>G</code> is grounding (F-beta &beta;=2.5), <code>T</code> is TTFT multiplier, and <code>F</code> is format compliance.
+            The <strong>multiplicative structure means each factor is a gate</strong> &mdash; a low grounding score destroys
+            the total regardless of answer quality.
+        </p>
+
+        <h3>Dataset</h3>
+        <table>
+            <thead><tr><th>Metric</th><th>Value</th></tr></thead>
+            <tbody>
+                <tr><td>Questions (final phase)</td><td><strong>900</strong></td></tr>
+                <tr><td>Documents</td><td><strong>298</strong></td></tr>
+                <tr><td>Total pages</td><td><strong>4,038</strong></td></tr>
+                <tr><td>Cross-document questions</td><td><strong>191 (21%)</strong></td></tr>
+                <tr><td>Submissions allowed</td><td><strong>2</strong></td></tr>
+            </tbody>
+        </table>
+
+        <div class="figure">
+            <img src="img/question_types.png" alt="Question type distribution">
+            <figcaption>Figure 1: Question type distribution and dual-model assignment. Deterministic types (70%) use GPT-5.4-mini; free-text (30%) uses GPT-5.2-chat.</figcaption>
+        </div>
+
+        <!-- 2. Architecture -->
+        <h2>2. System Architecture</h2>
+        <p>
+            Our key insight: <strong>every ARLC question references specific documents</strong> by case number or law name.
+            This means document routing is more effective than general retrieval &mdash; if you can map "CFI 035/2025" to a
+            specific document hash, you eliminate retrieval noise entirely.
+        </p>
+
+        <div class="figure">
+            <img src="img/architecture.png" alt="System architecture">
+            <figcaption>Figure 2: End-to-end architecture. Questions are routed to documents via regex (96% coverage). Three processing paths: full-doc context, filtered chunks, or hybrid retrieval fallback.</figcaption>
+        </div>
+
+        <h3>Document Router (96% Coverage)</h3>
+        <p>
+            The router extracts structured references using five families of regex patterns:
+        </p>
+        <ul>
+            <li><strong>Case references:</strong> CFI, SCT, CA, ARB, TCD, DEC, ENF with various formatting</li>
+            <li><strong>Law names:</strong> 25+ patterns ("DIFC Law No. 1 of 2004", "Employment Law", etc.)</li>
+            <li><strong>Regulations &amp; Orders:</strong> Order No., DRA Order, Cabinet Resolution</li>
+            <li><strong>Court procedure keywords:</strong> Fallback routing to Rules of Court</li>
+        </ul>
+        <p>
+            Result: <strong>864/900 questions</strong> (96%) mapped directly to source documents.
+            Zero API calls. Zero latency. Zero hallucination risk.
+        </p>
+
+        <div class="figure">
+            <img src="img/routing_coverage.png" alt="Routing coverage">
+            <figcaption>Figure 3: Pipeline routing distribution. 87% receive full-doc context; only 4% fall back to general retrieval.</figcaption>
+        </div>
+
+        <h3>Dual-Model LLM Strategy</h3>
+        <table>
+            <thead><tr><th>Question Types</th><th>Model</th><th>Temp</th><th>Avg TTFT</th></tr></thead>
+            <tbody>
+                <tr><td>boolean, number, name, date, names</td><td><strong>GPT-5.4-mini</strong></td><td>0.0</td><td>1.2&ndash;2.3s</td></tr>
+                <tr><td>free_text</td><td><strong>GPT-5.2-chat</strong></td><td>1.0</td><td>3.0&ndash;4.5s</td></tr>
+            </tbody>
+        </table>
+
+        <h3>Hybrid Retrieval (Fallback)</h3>
+        <p>For the 4% of unrouted questions, we use:</p>
+        <ul>
+            <li><strong>TF-IDF:</strong> Trigram features (80K), legal-aware tokenizer preserving "Article 8(1)"</li>
+            <li><strong>BM25:</strong> k1=1.5, b=0.75</li>
+            <li><strong>Embeddings:</strong> text-embedding-3-large (3,072 dims)</li>
+            <li><strong>Fusion:</strong> Reciprocal Rank Fusion (k=60)</li>
+            <li><strong>SAC:</strong> Summary-Augmented Chunking to reduce retrieval mismatch</li>
+        </ul>
+
+        <!-- 3. Results -->
+        <h2>3. Results</h2>
+
+        <div class="figure">
+            <img src="img/score_progression.png" alt="Score progression">
+            <figcaption>Figure 4: Score progression across warmup submissions (15 total). Deterministic accuracy plateaued at 0.943; grounding remained our weakest metric throughout.</figcaption>
+        </div>
+
+        <table>
+            <thead><tr><th>Version</th><th>Det</th><th>Asst</th><th>G</th><th>Total</th><th>Key Change</th></tr></thead>
+            <tbody>
+                <tr><td>v1 (warmup)</td><td>0.757</td><td>0.593</td><td>0.279</td><td>0.194</td><td>Baseline</td></tr>
+                <tr><td>v8</td><td>0.943</td><td>0.640</td><td>0.449</td><td>0.367</td><td>Improved prompts, temp=0</td></tr>
+                <tr><td>v11 (best warmup)</td><td>0.943</td><td>0.733</td><td>0.610</td><td><strong>0.519</strong></td><td>Embeddings + SAC</td></tr>
+                <tr><td>v15</td><td>0.943</td><td>0.740</td><td>0.598</td><td>0.505</td><td>LLM reranking (hurt!)</td></tr>
+                <tr style="border-top: 2px solid var(--accent-cyan)">
+                    <td>Final v2</td><td>0.840</td><td>0.746</td><td>0.542</td><td><strong>0.435</strong></td><td>Final phase (900 Qs)</td></tr>
+            </tbody>
+        </table>
+
+        <div class="figure">
+            <img src="img/leaderboard_comparison.png" alt="Leaderboard comparison">
+            <figcaption>Figure 5: Comparison to top warmup leaderboard teams. Our grounding (G=0.542) represents the largest gap. Leaders achieve G>0.96.</figcaption>
+        </div>
+
+        <!-- 4. The Grounding Trap -->
+        <h2>4. The Grounding Trap</h2>
+
+        <div class="callout danger">
+            <div class="callout-title">Key Insight</div>
+            <p style="color: var(--text-secondary)">
+                F-beta with &beta;=2.5 <em>sounds</em> recall-heavy. But when gold standard is ~3 pages,
+                citing 13 pages gives F=0.66 and citing 42 pages gives F=0.36.
+                <strong>Over-citing destroyed our score.</strong>
+            </p>
+        </div>
+
+        <div class="figure">
+            <img src="img/fbeta_sensitivity.png" alt="F-beta sensitivity">
+            <figcaption>Figure 6: The Grounding Trap &mdash; F-beta (&beta;=2.5) vs. citation count. With gold ~3 pages, the optimal range is 3&ndash;6 pages. Our v1 cited 42 (F=0.36); v2 cited 13 (F=0.66). Optimal ~5 pages would give F=0.93.</figcaption>
+        </div>
+
+        <table>
+            <thead><tr><th>Pages Cited</th><th>Precision</th><th>Recall</th><th>F<sub>2.5</sub></th></tr></thead>
+            <tbody>
+                <tr><td>3</td><td>1.00</td><td>1.00</td><td><strong>1.000</strong></td></tr>
+                <tr><td>5</td><td>0.60</td><td>1.00</td><td><strong>0.928</strong></td></tr>
+                <tr><td>8</td><td>0.38</td><td>1.00</td><td>0.805</td></tr>
+                <tr><td>13 (our v2)</td><td>0.23</td><td>1.00</td><td>0.660</td></tr>
+                <tr><td>42 (our v1)</td><td>0.07</td><td>1.00</td><td>0.363</td></tr>
+            </tbody>
+        </table>
+
+        <div class="figure">
+            <img src="img/grounding_impact.png" alt="Grounding impact analysis">
+            <figcaption>Figure 7: Impact of grounding on total score. Improving G from 0.54 to 0.85 would increase Total from 0.435 to 0.683 (+57%).</figcaption>
+        </div>
+
+        <div class="figure">
+            <img src="img/page_distribution.png" alt="Page citation distribution">
+            <figcaption>Figure 8: Distribution of page citations in our v2 submission. The mean (12.8) significantly exceeds the optimal range.</figcaption>
+        </div>
+
+        <div class="figure">
+            <img src="img/sensitivity_analysis.png" alt="Sensitivity analysis">
+            <figcaption>Figure 9: Sensitivity analysis. Grounding improvement dominates all other factors &mdash; G 0.54&rarr;0.85 yields +57% vs +12% for perfecting deterministic accuracy.</figcaption>
+        </div>
+
+        <!-- 5. Lessons -->
+        <h2>5. Lessons Learned</h2>
+
+        <div class="callout success">
+            <div class="callout-title">Lesson 1: Run the Math First</div>
+            <p style="color: var(--text-secondary)">
+                We spent 2 weeks optimizing answer quality, then lost 40% of our score to a grounding strategy
+                chosen without computing F-beta sensitivity. Always calculate metric impact <em>before</em> building.
+            </p>
+        </div>
+
+        <h3>Lesson 2: Simple Routing Beats Complex Retrieval</h3>
+        <p>
+            For domain-specific corpora where questions reference documents by name, <strong>regex routing is more
+            reliable than embedding similarity</strong>. Our router achieved 96% coverage with zero API calls,
+            zero latency, and zero hallucination risk. Before building a retrieval stack, check if pattern matching can route most queries.
+        </p>
+
+        <h3>Lesson 3: Full-Doc Context Enables LLM Self-Citation</h3>
+        <p>
+            When the LLM sees the entire document, it can accurately self-report which pages contain the answer.
+            This is more reliable than any retrieval heuristic. For documents &le;50 pages, send full text and
+            ask the LLM to report page numbers.
+        </p>
+
+        <h3>Lesson 4: Submission Budget is Precious</h3>
+        <p>
+            With only <strong>2 final submissions</strong>, there's no room for iterative optimization.
+            Both our submissions used variations of the same over-citation strategy. We discovered the optimal
+            approach after exhausting our budget. Use warmup phases to validate your <em>weakest</em> metric.
+        </p>
+
+        <h3>Lesson 5: What Didn't Help</h3>
+        <ul>
+            <li><strong>LLM page reranking:</strong> Added latency, slightly hurt grounding (&minus;0.012)</li>
+            <li><strong>Self-consistency voting:</strong> +12&ndash;18% accuracy but 3x latency &mdash; poor tradeoff</li>
+            <li><strong>Embedding retrieval for routed questions:</strong> Unnecessary noise when target is known</li>
+            <li><strong>Cross-reference page expansion:</strong> Added pages not in gold standard</li>
+        </ul>
+
+        <!-- 6. What We'd Do Differently -->
+        <h2>6. What We Would Do Differently</h2>
+        <ol>
+            <li><strong>Start with grounding math.</strong> Calculate F-beta for different citation counts before building anything.</li>
+            <li><strong>Validate grounding in warmup.</strong> Our 15 warmup submissions focused on answers, not citations.</li>
+            <li><strong>Cite only LLM-reported pages.</strong> No expansion, no heuristics. Trust the LLM's page identification.</li>
+            <li><strong>Use structured outputs</strong> (<code>json_schema</code>) for guaranteed valid JSON.</li>
+            <li><strong>Build a local evaluation harness</strong> to test grounding without burning submissions.</li>
+            <li><strong>Reserve final submissions</strong> &mdash; make each test a fundamentally different hypothesis.</li>
+        </ol>
+
+        <!-- 7. Conclusion -->
+        <h2>7. Conclusion</h2>
+        <p>
+            Our ARLC 2026 entry demonstrates that <strong>document routing + full-document context</strong> is a
+            viable architecture for legal RAG. With 96% routing coverage and strong answers (Det=0.840),
+            our weakness was an over-citation strategy that inflated pages from the optimal ~5 to ~13, costing ~40% of our score.
+        </p>
+        <p>
+            Post-competition analysis with optimized citation (avg 4.2 pages) estimates our score would have been
+            <strong>0.65&ndash;0.68</strong> &mdash; a 57% improvement from a single parameter change.
+        </p>
+        <p>
+            <strong>The key takeaway:</strong> in multiplicative scoring systems, every component is a gate.
+            Optimize the weakest factor first, and always run the math before choosing a strategy.
+        </p>
+
+        <div class="callout">
+            <div class="callout-title">Source Code</div>
+            <p style="color: var(--text-secondary)">
+                Full source code, including pipeline, router, retriever, and answer engine:
+                <a href="https://github.com/alexff91/legal-champ" target="_blank" style="color: var(--accent-cyan)">github.com/alexff91/legal-champ</a>
+            </p>
+        </div>
+
+        <!-- References -->
+        <h2>References</h2>
+        <div class="references">
+            <p>[1] Agentic RAG Legal Challenge 2026. Machines Can See / Dubai AI Week. <a href="https://agentic-challenge.ai/" style="color: var(--accent-cyan)">agentic-challenge.ai</a></p>
+            <p>[2] Cormack et al. "Reciprocal Rank Fusion outperforms Condorcet and individual Rank Learning Methods." SIGIR, 2009.</p>
+            <p>[3] Wang et al. "Enhancing RAG with Summary-Augmented Chunking." arXiv:2510.06999, 2025.</p>
+            <p>[4] Gao et al. "Precise Zero-Shot Dense Retrieval without Relevance Labels." ACL 2023. arXiv:2212.10496.</p>
+            <p>[5] Abdullin, I. "How to Build the Best RAG." <a href="https://abdullin.com/ilya/how-to-build-best-rag/" style="color: var(--accent-cyan)">abdullin.com</a> (ERC winner writeup).</p>
+            <p>[6] Robertson & Zaragoza. "The Probabilistic Relevance Framework: BM25 and Beyond." FnTIR, 2009.</p>
+            <p>[7] Lewis et al. "Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks." NeurIPS, 2020.</p>
+        </div>
+
+    </article>
+
+    <footer>
+        <p><a href="/">alexff91.dev</a> // Aleksandr Fedorov // 2026</p>
+        <p style="margin-top: 0.5rem">Built with raw HTML, charts from matplotlib, and lessons from losing.</p>
+    </footer>
+
+    </div>
+</body>
+</html>
