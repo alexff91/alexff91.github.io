@@ -4,423 +4,695 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>The Grounding Trap &mdash; Aleksandr Fedorov</title>
-    <meta name="description" content="Building a document-routed RAG system for the Agentic Legal RAG Challenge 2026. Architecture, F-beta analysis, and hard lessons.">
+    <meta name="description" content="How we built a legal RAG system for ARLC 2026 and what went wrong with page citations.">
     <meta property="og:title" content="The Grounding Trap: Building a Legal RAG System for ARLC 2026">
-    <meta property="og:description" content="96% document routing, dual-model LLM, and the math mistake that cost us 40%.">
+    <meta property="og:description" content="96% document routing, dual-model LLM, and the mistake that cost us 40%.">
     <meta property="og:type" content="article">
     <meta property="og:image" content="https://alexff91.github.io/posts/arlc-2026/img/architecture.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
-            --black: #111;
-            --white: #fafaf9;
-            --gray: #888;
-            --light: #e8e6e3;
-            --lighter: #f2f0ed;
-            --accent: #e63946;
+            --bg: #0a0a0a;
+            --card: #141414;
+            --card-hover: #1a1a1a;
+            --border: #222;
+            --text: #d4d4d4;
+            --muted: #666;
+            --accent: #ff4d4d;
+            --accent2: #ff8a4d;
+            --accent3: #ffd54d;
+            --green: #4dff88;
         }
         body {
-            font-family: 'Space Grotesk', sans-serif;
-            background: var(--white);
-            color: var(--black);
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg); color: var(--text);
             -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
         }
         ::selection { background: var(--accent); color: white; }
         a { color: inherit; }
 
+        /* Grain */
+        body::before {
+            content: '';
+            position: fixed; inset: 0; z-index: 9999; pointer-events: none;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+        }
+
+        /* Floating shapes */
+        .shapes { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+        .shape { position: absolute; border-radius: 50%; opacity: 0.04; animation: float 20s ease-in-out infinite; }
+        .shape:nth-child(1) { width: 500px; height: 500px; background: var(--accent); top: -200px; right: -150px; animation-duration: 28s; }
+        .shape:nth-child(2) { width: 350px; height: 350px; background: var(--accent2); bottom: 30%; left: -100px; animation-duration: 32s; animation-delay: -7s; }
+        .shape:nth-child(3) { width: 250px; height: 250px; background: var(--accent3); top: 60%; right: 5%; animation-duration: 24s; animation-delay: -12s; }
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            25% { transform: translate(30px, -50px) scale(1.05); }
+            50% { transform: translate(-25px, 25px) scale(0.95); }
+            75% { transform: translate(15px, 45px) scale(1.02); }
+        }
+
+        .content { position: relative; z-index: 1; }
+
         /* Nav */
         nav {
-            padding: 2rem 3rem;
-            display: flex; justify-content: space-between; align-items: baseline;
-            border-bottom: 1.5px solid var(--black);
-            position: sticky; top: 0; background: var(--white); z-index: 50;
+            padding: 1.5rem 2rem;
+            display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 1px solid var(--border);
+            backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            position: sticky; top: 0; z-index: 100; background: rgba(10,10,10,0.85);
         }
-        .nav-name {
-            font-family: 'Space Mono', monospace;
-            font-size: 0.85rem; font-weight: 700; text-decoration: none;
-        }
-        .nav-links { display: flex; gap: 2rem; }
-        .nav-links a {
-            font-size: 0.8rem; text-decoration: none; color: var(--gray); font-weight: 500;
-            transition: color 0.15s;
-        }
-        .nav-links a:hover { color: var(--black); }
+        .nav-name { font-weight: 800; font-size: 0.9rem; text-decoration: none; letter-spacing: -0.5px; }
+        .nav-dot { display: inline-block; width: 8px; height: 8px; background: var(--accent); border-radius: 50%; margin-right: 8px; animation: pulse 2s ease-in-out infinite; }
+        @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(0.8)} }
+        .nav-links { display: flex; gap: 1.5rem; }
+        .nav-links a { font-size: 0.8rem; font-weight: 500; color: var(--muted); text-decoration: none; transition: color 0.2s; }
+        .nav-links a:hover { color: var(--text); }
 
-        /* Article header */
-        .article-header {
-            padding: 6rem 3rem 4rem;
-            max-width: 720px;
+        /* Reading progress */
+        .progress-bar {
+            position: fixed; top: 0; left: 0; height: 3px; z-index: 200;
+            background: linear-gradient(90deg, var(--accent), var(--accent2), var(--accent3));
+            width: 0%; transition: width 0.1s;
         }
-        .article-header .meta {
-            font-family: 'Space Mono', monospace;
-            font-size: 0.7rem; color: var(--gray);
-            text-transform: uppercase; letter-spacing: 1.5px;
+
+        /* Hero */
+        .hero {
+            padding: 8rem 2rem 5rem;
+            max-width: 780px;
+            animation: fadeUp 0.8s ease-out;
+        }
+        @keyframes fadeUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+        .hero .badge {
+            display: inline-block;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.65rem; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 2px;
+            color: var(--accent); background: rgba(255,77,77,0.1);
+            border: 1px solid rgba(255,77,77,0.2);
+            padding: 0.4rem 1rem; border-radius: 100px;
             margin-bottom: 1.5rem;
         }
-        .article-header h1 {
-            font-size: clamp(2.2rem, 6vw, 3.5rem);
-            font-weight: 700; line-height: 1.05; letter-spacing: -2px;
-            margin-bottom: 1.5rem;
+        .hero h1 {
+            font-size: clamp(2.5rem, 7vw, 4rem);
+            font-weight: 900; line-height: 1.05; letter-spacing: -2px; margin-bottom: 1.5rem;
         }
-        .article-header h1 .serif {
-            font-family: 'Newsreader', serif; font-style: italic; font-weight: 400;
+        .hero h1 .gradient {
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
         }
-        .article-header .lede {
-            font-size: 1.15rem; line-height: 1.7; color: var(--gray);
-            border-left: 2.5px solid var(--accent); padding-left: 1.2rem;
+        .hero .lede {
+            font-size: 1.15rem; line-height: 1.8; color: var(--muted); max-width: 600px;
         }
 
         /* Score strip */
         .scores {
-            display: flex; gap: 0; border-top: 1.5px solid var(--black); border-bottom: 1.5px solid var(--black);
-            margin: 0 3rem;
-            overflow-x: auto;
+            display: grid; grid-template-columns: repeat(6, 1fr);
+            gap: 1px; background: var(--border);
+            margin: 0 2rem; border-radius: 12px; overflow: hidden;
+            animation: fadeUp 0.8s ease-out 0.2s both;
         }
         .score-cell {
-            flex: 1; min-width: 100px; padding: 1.5rem 1rem; text-align: center;
-            border-right: 1px solid var(--light);
+            background: var(--card); padding: 1.8rem 0.8rem; text-align: center;
+            transition: background 0.3s;
         }
-        .score-cell:last-child { border-right: none; }
+        .score-cell:hover { background: var(--card-hover); }
         .score-cell .num {
-            font-family: 'Space Mono', monospace;
-            font-size: 1.6rem; font-weight: 700; letter-spacing: -1px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.5rem; font-weight: 700; letter-spacing: -1px;
         }
-        .score-cell .num.red { color: var(--accent); }
+        .score-cell .num.bad { color: var(--accent); }
+        .score-cell .num.good { color: var(--green); }
         .score-cell .lbl {
-            font-size: 0.65rem; color: var(--gray); text-transform: uppercase;
-            letter-spacing: 1px; margin-top: 0.3rem;
+            font-size: 0.6rem; color: var(--muted); text-transform: uppercase;
+            letter-spacing: 1px; margin-top: 0.4rem;
         }
 
         /* Article body */
-        .article-body {
-            max-width: 720px; margin: 0 auto; padding: 3rem 3rem 6rem;
+        .article { max-width: 720px; margin: 0 auto; padding: 4rem 2rem 6rem; }
+
+        /* Animated sections */
+        .reveal {
+            opacity: 0; transform: translateY(30px);
+            transition: opacity 0.7s ease, transform 0.7s ease;
         }
-        .article-body h2 {
-            font-size: 1.8rem; font-weight: 700; letter-spacing: -1px;
-            margin: 4rem 0 1.2rem; line-height: 1.15;
+        .reveal.visible {
+            opacity: 1; transform: translateY(0);
         }
-        .article-body h2 .num {
-            font-family: 'Space Mono', monospace;
-            font-size: 0.8rem; color: var(--gray); display: block;
-            margin-bottom: 0.3rem; letter-spacing: 0;
+
+        /* Section headers */
+        .section-num {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem; font-weight: 700; color: var(--accent);
+            text-transform: uppercase; letter-spacing: 2px;
+            margin-bottom: 0.5rem;
         }
-        .article-body h3 {
-            font-size: 1.15rem; font-weight: 600; margin: 2.5rem 0 0.8rem;
+        .article h2 {
+            font-size: 1.9rem; font-weight: 800; letter-spacing: -1px;
+            margin-bottom: 1.5rem; line-height: 1.15;
         }
-        .article-body p {
-            font-size: 1rem; line-height: 1.8; color: #333; margin-bottom: 1.3rem;
+        .article h3 {
+            font-size: 1.2rem; font-weight: 700; margin: 2.5rem 0 1rem;
+            color: #fff;
         }
-        .article-body strong { color: var(--black); }
-        .article-body ul, .article-body ol {
-            margin: 1rem 0 1.5rem 1.3rem; color: #333; line-height: 1.8;
+        .article p {
+            font-size: 1rem; line-height: 1.85; color: var(--text); margin-bottom: 1.3rem;
         }
-        .article-body li { margin-bottom: 0.4rem; }
+        .article strong { color: #fff; }
+        .article ul, .article ol {
+            margin: 1rem 0 1.5rem 1.3rem; line-height: 1.85;
+        }
+        .article li { margin-bottom: 0.5rem; }
+
+        /* Simple explanation boxes */
+        .simple-box {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 2rem;
+            margin: 2rem 0;
+            position: relative;
+            overflow: hidden;
+        }
+        .simple-box::before {
+            content: '';
+            position: absolute; top: 0; left: 0; right: 0; height: 3px;
+            background: linear-gradient(90deg, var(--accent), var(--accent2), var(--accent3));
+        }
+        .simple-box .emoji { font-size: 2rem; margin-bottom: 0.8rem; }
+        .simple-box .explain {
+            font-size: 1.05rem; line-height: 1.7;
+        }
+        .simple-box .explain strong { color: var(--accent); }
+
+        /* Key insight callouts */
+        .insight {
+            background: rgba(255,77,77,0.05);
+            border: 1px solid rgba(255,77,77,0.15);
+            border-radius: 12px;
+            padding: 1.8rem 2rem;
+            margin: 2rem 0;
+        }
+        .insight .icon { font-size: 1.5rem; margin-bottom: 0.5rem; }
+        .insight p { margin-bottom: 0; }
 
         /* Figures */
         .fig {
-            margin: 2.5rem -2rem; /* bleed slightly */
+            margin: 2.5rem -1rem;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            transition: transform 0.3s, box-shadow 0.3s;
         }
-        .fig img {
-            width: 100%; display: block; border-radius: 4px;
-            border: 1px solid var(--light);
+        .fig:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 40px rgba(0,0,0,0.3);
         }
+        .fig img { width: 100%; display: block; }
         .fig figcaption {
-            font-size: 0.8rem; color: var(--gray); margin-top: 0.6rem;
-            padding: 0 2rem; line-height: 1.5;
+            font-size: 0.82rem; color: var(--muted); padding: 1rem 1.5rem; line-height: 1.5;
+            border-top: 1px solid var(--border);
         }
 
         /* Tables */
-        table {
-            width: 100%; border-collapse: collapse; margin: 1.5rem 0;
-            font-size: 0.88rem;
+        .table-wrap {
+            background: var(--card); border: 1px solid var(--border);
+            border-radius: 12px; overflow: hidden; margin: 1.5rem 0;
         }
+        table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
         th {
-            font-family: 'Space Mono', monospace;
-            font-size: 0.65rem; text-transform: uppercase; letter-spacing: 1.5px;
-            color: var(--gray); text-align: left;
-            padding: 0.7rem 0.6rem; border-bottom: 1.5px solid var(--black);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.6rem; text-transform: uppercase; letter-spacing: 1.5px;
+            color: var(--muted); text-align: left;
+            padding: 1rem 1rem; border-bottom: 1px solid var(--border);
+            background: rgba(255,255,255,0.02);
         }
-        td {
-            padding: 0.6rem; border-bottom: 1px solid var(--light); color: #444;
-        }
+        td { padding: 0.8rem 1rem; border-bottom: 1px solid rgba(255,255,255,0.03); }
+        tr:last-child td { border-bottom: none; }
         td strong { color: var(--accent); }
+        tr:hover td { background: rgba(255,255,255,0.02); }
 
         /* Code */
         code {
-            font-family: 'Space Mono', monospace;
-            font-size: 0.82em; background: var(--lighter);
-            padding: 0.15em 0.4em; border-radius: 3px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.82em; background: rgba(255,255,255,0.06);
+            padding: 0.15em 0.4em; border-radius: 4px;
         }
         pre {
-            background: var(--black); color: #ccc; border-radius: 6px;
-            padding: 1.3rem 1.5rem; margin: 1.5rem 0; overflow-x: auto;
+            background: #111; border: 1px solid var(--border);
+            border-radius: 10px; padding: 1.3rem 1.5rem; margin: 1.5rem 0;
+            overflow-x: auto;
         }
         pre code {
-            background: none; padding: 0; color: #ccc; font-size: 0.78rem; line-height: 1.7;
+            background: none; padding: 0; color: var(--text);
+            font-size: 0.78rem; line-height: 1.7;
         }
 
-        /* Callout */
-        .callout {
-            background: var(--lighter); border-radius: 4px;
-            padding: 1.5rem; margin: 2rem 0;
-            border-left: 3px solid var(--accent);
+        /* Big number highlight */
+        .big-number {
+            display: inline-block;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 3rem; font-weight: 700;
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text; letter-spacing: -2px;
         }
-        .callout p { margin-bottom: 0; color: #444; }
-        .callout strong { color: var(--black); }
 
-        /* References */
-        .refs { font-size: 0.82rem; color: var(--gray); line-height: 1.8; }
-        .refs a { color: var(--accent); }
+        /* Comparison cards */
+        .compare {
+            display: grid; grid-template-columns: 1fr 1fr;
+            gap: 1rem; margin: 2rem 0;
+        }
+        .compare-card {
+            background: var(--card); border: 1px solid var(--border);
+            border-radius: 12px; padding: 1.8rem; text-align: center;
+            transition: transform 0.3s;
+        }
+        .compare-card:hover { transform: translateY(-3px); }
+        .compare-card .label {
+            font-size: 0.7rem; color: var(--muted); text-transform: uppercase;
+            letter-spacing: 1.5px; margin-bottom: 0.5rem;
+        }
+        .compare-card .value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 2.5rem; font-weight: 700; letter-spacing: -2px;
+        }
+        .compare-card .desc {
+            font-size: 0.8rem; color: var(--muted); margin-top: 0.5rem;
+        }
+        .compare-card.bad .value { color: var(--accent); }
+        .compare-card.good .value { color: var(--green); }
+
+        /* Lesson cards */
+        .lesson {
+            background: var(--card); border: 1px solid var(--border);
+            border-radius: 12px; padding: 1.8rem;
+            margin: 1rem 0;
+            transition: transform 0.3s, border-color 0.3s;
+        }
+        .lesson:hover { transform: translateX(6px); border-color: var(--muted); }
+        .lesson-num {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.65rem; color: var(--accent);
+            text-transform: uppercase; letter-spacing: 2px;
+            margin-bottom: 0.5rem;
+        }
+        .lesson h4 { font-size: 1.05rem; font-weight: 700; color: #fff; margin-bottom: 0.5rem; }
+        .lesson p { margin-bottom: 0; font-size: 0.92rem; }
+
+        /* Refs */
+        .refs {
+            font-size: 0.82rem; color: var(--muted); line-height: 1.9;
+            margin-top: 2rem;
+        }
+        .refs a { color: var(--accent); text-decoration: none; }
+        .refs a:hover { text-decoration: underline; }
 
         /* Footer */
         footer {
-            padding: 3rem; border-top: 1.5px solid var(--black);
+            padding: 2rem; border-top: 1px solid var(--border);
             display: flex; justify-content: space-between; flex-wrap: wrap; gap: 1rem;
         }
-        footer span {
-            font-family: 'Space Mono', monospace; font-size: 0.7rem; color: var(--gray);
-        }
+        footer span { font-size: 0.75rem; color: var(--muted); }
         footer a { color: var(--accent); text-decoration: none; }
 
         @media (max-width: 640px) {
-            nav, .article-header, footer { padding-left: 1.5rem; padding-right: 1.5rem; }
-            .scores { margin: 0 1.5rem; }
-            .article-body { padding-left: 1.5rem; padding-right: 1.5rem; }
+            .hero { padding: 5rem 1.5rem 3rem; }
+            .scores { grid-template-columns: repeat(3, 1fr); margin: 0 1.5rem; }
+            .article { padding: 3rem 1.5rem 4rem; }
             .fig { margin-left: 0; margin-right: 0; }
-            .fig figcaption { padding: 0; }
+            .compare { grid-template-columns: 1fr; }
+            nav { padding: 1.2rem 1.5rem; }
+            footer { padding: 2rem 1.5rem; }
         }
     </style>
 </head>
 <body>
 
+<div class="progress-bar" id="progressBar"></div>
+
+<div class="shapes">
+    <div class="shape"></div>
+    <div class="shape"></div>
+    <div class="shape"></div>
+</div>
+
+<div class="content">
+
 <nav>
-    <a href="/" class="nav-name">Aleksandr Fedorov</a>
+    <a href="/" class="nav-name"><span class="nav-dot"></span>Aleksandr Fedorov</a>
     <div class="nav-links">
         <a href="/">Home</a>
-        <a href="https://github.com/alexff91/legal-champ" target="_blank">Source</a>
+        <a href="https://github.com/alexff91/legal-champ" target="_blank">Source Code</a>
         <a href="https://github.com/alexff91" target="_blank">GitHub</a>
     </div>
 </nav>
 
-<section class="article-header">
-    <div class="meta">March 22, 2026 &middot; ARLC 2026 &middot; Dubai AI Week</div>
-    <h1>The Grounding <span class="serif">Trap</span></h1>
+<section class="hero">
+    <div class="badge">ARLC 2026 &bull; Dubai AI Week &bull; March 2026</div>
+    <h1>The Grounding <span class="gradient">Trap</span></h1>
     <p class="lede">
-        How we built a document-routed RAG system for the Agentic Legal RAG Challenge,
-        why citing too many pages destroyed our score, and what the F-beta formula
-        actually means when your gold standard is three pages.
+        We built a system that reads legal documents and answers questions about them.
+        It was really good at finding answers &mdash; but it pointed to too many pages.
+        That one mistake cost us almost half our score. Here's the whole story.
     </p>
 </section>
 
 <div class="scores">
-    <div class="score-cell"><div class="num red">0.435</div><div class="lbl">Total</div></div>
-    <div class="score-cell"><div class="num">0.840</div><div class="lbl">Det</div></div>
-    <div class="score-cell"><div class="num">0.746</div><div class="lbl">Asst</div></div>
-    <div class="score-cell"><div class="num red">0.542</div><div class="lbl">Grounding</div></div>
-    <div class="score-cell"><div class="num">1.000</div><div class="lbl">TTFT</div></div>
-    <div class="score-cell"><div class="num">0.987</div><div class="lbl">Format</div></div>
+    <div class="score-cell"><div class="num bad">0.435</div><div class="lbl">Total</div></div>
+    <div class="score-cell"><div class="num good">0.840</div><div class="lbl">Answers</div></div>
+    <div class="score-cell"><div class="num">0.746</div><div class="lbl">Writing</div></div>
+    <div class="score-cell"><div class="num bad">0.542</div><div class="lbl">Pages</div></div>
+    <div class="score-cell"><div class="num good">1.000</div><div class="lbl">Speed</div></div>
+    <div class="score-cell"><div class="num good">0.987</div><div class="lbl">Format</div></div>
 </div>
 
-<div class="article-body">
+<div class="article">
 
-    <h2><span class="num">01</span>The Competition</h2>
-    <p>
-        The Agentic RAG Legal Challenge is an international competition at Dubai AI Week. Build a system
-        that answers legal questions grounded in DIFC documents &mdash; court decisions, laws, regulations.
-        900 questions. 298 documents. 4,038 pages. Two submission attempts.
-    </p>
-    <p>The scoring formula makes optimization interesting:</p>
-    <pre><code>Total = (0.7 &times; S_det + 0.3 &times; S_asst) &times; G &times; T &times; F</code></pre>
-    <p>
-        Every factor is <strong>multiplicative</strong>. A weak grounding score doesn't subtract &mdash; it <em>divides</em>.
-        This matters more than anything else in the paper.
-    </p>
+    <!-- SECTION 1 -->
+    <div class="reveal">
+        <div class="section-num">01 &mdash; The Challenge</div>
+        <h2>What Is This Competition?</h2>
 
-    <div class="fig">
-        <img src="img/question_types.png" alt="Question type distribution">
-        <figcaption>Question types and model assignment. 70% deterministic (GPT-5.4-mini), 30% free-text (GPT-5.2).</figcaption>
-    </div>
+        <div class="simple-box">
+            <div class="emoji">&#x1F4DA;</div>
+            <div class="explain">
+                Imagine you have a <strong>huge pile of legal books</strong> &mdash; 298 of them, with 4,038 pages total.
+                Now someone asks you 900 questions about what's in those books. You need to find the right page,
+                read it, and give the correct answer. Oh, and you have to say <em>which pages</em> you looked at.
+                That's the ARLC competition.
+            </div>
+        </div>
 
-    <h2><span class="num">02</span>Architecture</h2>
-    <p>
-        Every ARLC question names specific documents: "What is the claim amount in <strong>CFI 035/2025</strong>?"
-        So we skip vector search entirely for 96% of questions. Regex extracts the reference, a lookup table maps
-        it to the document hash, and the LLM gets the full document.
-    </p>
-
-    <div class="fig">
-        <img src="img/architecture.png" alt="System architecture">
-        <figcaption>Three processing paths: full-doc for small routed docs, filtered chunks for large ones, hybrid retrieval fallback for the 4% that can't be routed.</figcaption>
-    </div>
-
-    <h3>Document Router</h3>
-    <p>
-        Five regex families: case references (CFI/SCT/CA/ARB), law names (25+ patterns), regulations,
-        orders, and court procedure keywords. <strong>864 of 900 questions</strong> route to specific documents.
-        Zero API calls. Zero latency.
-    </p>
-
-    <div class="fig">
-        <img src="img/routing_coverage.png" alt="Routing distribution">
-        <figcaption>87% full-doc context, 9% filtered chunks, 4% retrieval fallback.</figcaption>
-    </div>
-
-    <h3>Dual-Model Strategy</h3>
-    <table>
-        <thead><tr><th>Types</th><th>Model</th><th>Temp</th><th>TTFT</th></tr></thead>
-        <tbody>
-            <tr><td>boolean, number, name, date, names</td><td>GPT-5.4-mini</td><td>0</td><td>1.2&ndash;2.3s</td></tr>
-            <tr><td>free_text</td><td>GPT-5.2-chat</td><td>1</td><td>3&ndash;4.5s</td></tr>
-        </tbody>
-    </table>
-
-    <h3>Hybrid Retrieval (Fallback)</h3>
-    <p>
-        For the 4% of unrouted questions: TF-IDF (80K trigram features) + BM25 (k1=1.5, b=0.75) +
-        text-embedding-3-large with Reciprocal Rank Fusion. Summary-Augmented Chunking to reduce
-        retrieval mismatch.
-    </p>
-
-    <h2><span class="num">03</span>Results</h2>
-
-    <div class="fig">
-        <img src="img/score_progression.png" alt="Score progression">
-        <figcaption>15 warmup iterations. Deterministic hit 0.943 and stuck. Grounding improved slowly from 0.279 to 0.610 but never broke through.</figcaption>
-    </div>
-
-    <table>
-        <thead><tr><th>Version</th><th>Det</th><th>Asst</th><th>G</th><th>Total</th><th>Change</th></tr></thead>
-        <tbody>
-            <tr><td>v1 (warmup)</td><td>0.757</td><td>0.593</td><td>0.279</td><td>0.194</td><td>Baseline</td></tr>
-            <tr><td>v8</td><td>0.943</td><td>0.640</td><td>0.449</td><td>0.367</td><td>Better prompts, temp=0</td></tr>
-            <tr><td>v11</td><td>0.943</td><td>0.733</td><td>0.610</td><td><strong>0.519</strong></td><td>Embeddings + SAC</td></tr>
-            <tr><td>v15</td><td>0.943</td><td>0.740</td><td>0.598</td><td>0.505</td><td>LLM reranking (hurt)</td></tr>
-            <tr><td>Final v2</td><td>0.840</td><td>0.746</td><td>0.542</td><td><strong>0.435</strong></td><td>900 Qs, 298 docs</td></tr>
-        </tbody>
-    </table>
-
-    <div class="fig">
-        <img src="img/leaderboard_comparison.png" alt="Leaderboard comparison">
-        <figcaption>Top teams: G > 0.96. Our G = 0.54. That's the whole story.</figcaption>
-    </div>
-
-    <h2><span class="num">04</span>The Grounding Trap</h2>
-
-    <div class="callout">
         <p>
-            <strong>The mistake:</strong> F-beta with &beta;=2.5 weights recall 6.25x over precision.
-            We read that as "cite more pages." But when gold is ~3 pages, citing 13 gives F=0.66
-            and citing 42 gives F=0.36. We learned this after using both submissions.
+            The competition happened at Dubai AI Week. Teams from around the world built AI systems
+            to answer legal questions about DIFC (Dubai International Financial Centre) documents &mdash;
+            court cases, laws, and regulations.
+        </p>
+
+        <p>Your final score is calculated like this:</p>
+        <pre><code>Score = (0.7 &times; Answers + 0.3 &times; Writing) &times; Pages &times; Speed &times; Format</code></pre>
+
+        <div class="insight">
+            <div class="icon">&#x26A0;&#xFE0F;</div>
+            <p>
+                <strong>The key thing:</strong> everything is <strong>multiplied</strong>.
+                If your "Pages" score is 0.5, your whole score gets cut in half &mdash; no matter how great your answers are.
+                It's like having one flat tire: the whole car slows down.
+            </p>
+        </div>
+
+        <figure class="fig">
+            <img src="img/question_types.png" alt="Types of questions">
+            <figcaption>The 900 questions came in different types. Some need a simple yes/no. Others need a number, a name, or a full paragraph. We used different AI models for different types.</figcaption>
+        </figure>
+    </div>
+
+    <!-- SECTION 2 -->
+    <div class="reveal">
+        <div class="section-num">02 &mdash; How We Built It</div>
+        <h2>Our System: The Document Router</h2>
+
+        <div class="simple-box">
+            <div class="emoji">&#x1F50D;</div>
+            <div class="explain">
+                Most legal questions mention a specific case or law by name.
+                Like: "What is the claim amount in <strong>CFI 035/2025</strong>?"
+                <br><br>
+                So instead of searching through everything (slow and error-prone), our system
+                <strong>reads the case number and goes straight to that document</strong>.
+                Like looking at a book's call number instead of searching every shelf.
+                This worked for <strong>96% of all questions</strong>.
+            </div>
+        </div>
+
+        <figure class="fig">
+            <img src="img/architecture.png" alt="How our system works">
+            <figcaption>Three paths: (1) Small document? Read the whole thing. (2) Big document? Read the relevant chunks. (3) Can't find the document? Search for it. Path 1 and 2 handle 96% of questions.</figcaption>
+        </figure>
+
+        <h3>Pattern Matching (The Router)</h3>
+        <p>
+            We wrote rules to spot case numbers (like CFI/035/2025), law names (like "Employment Law"),
+            and regulation numbers. <strong>864 out of 900 questions</strong> matched a rule and went straight
+            to the right document. No fancy AI needed for this part &mdash; just smart pattern matching.
+        </p>
+
+        <figure class="fig">
+            <img src="img/routing_coverage.png" alt="How questions were routed">
+            <figcaption>87% got the full document as context. 9% got filtered chunks from large documents. Only 4% needed vector search as a fallback.</figcaption>
+        </figure>
+
+        <h3>Two AI Brains</h3>
+        <p>We used two different AI models &mdash; each for what it's best at:</p>
+
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>Question Types</th><th>AI Model</th><th>Why?</th></tr></thead>
+                <tbody>
+                    <tr><td>Yes/no, numbers, names, dates</td><td>GPT-5.4-mini</td><td>Fast, precise, cheap</td></tr>
+                    <tr><td>Paragraphs, explanations</td><td>GPT-5.2-chat</td><td>Better at writing</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <h3>The Backup Plan (For Hard Questions)</h3>
+        <p>
+            For the 4% of questions where we couldn't find the document by name, we used
+            three different search methods at once: keyword matching (TF-IDF), document ranking (BM25),
+            and AI-powered similarity search (embeddings). Then we combined their results.
         </p>
     </div>
 
-    <div class="fig">
-        <img src="img/fbeta_sensitivity.png" alt="F-beta sensitivity">
-        <figcaption>The trap visualized. With gold = 3 pages, F-beta drops fast as you over-cite. Our v1 (42 pages) and v2 (13 pages) are both far from the optimum (~5 pages).</figcaption>
+    <!-- SECTION 3 -->
+    <div class="reveal">
+        <div class="section-num">03 &mdash; The Results</div>
+        <h2>How Did We Do?</h2>
+
+        <figure class="fig">
+            <img src="img/score_progression.png" alt="Our score over time">
+            <figcaption>We improved over 15 warmup rounds. Our answer quality reached 0.943 early. But the "Pages" score (grounding) climbed slowly and never broke 0.61.</figcaption>
+        </figure>
+
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>Version</th><th>Answers</th><th>Writing</th><th>Pages</th><th>Total</th><th>What Changed</th></tr></thead>
+                <tbody>
+                    <tr><td>First try</td><td>0.757</td><td>0.593</td><td>0.279</td><td>0.194</td><td>Starting point</td></tr>
+                    <tr><td>v8</td><td>0.943</td><td>0.640</td><td>0.449</td><td>0.367</td><td>Better prompts</td></tr>
+                    <tr><td>v11</td><td>0.943</td><td>0.733</td><td>0.610</td><td><strong>0.519</strong></td><td>Added AI search</td></tr>
+                    <tr><td>Final</td><td>0.840</td><td>0.746</td><td>0.542</td><td><strong>0.435</strong></td><td>Full 900 questions</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <figure class="fig">
+            <img src="img/leaderboard_comparison.png" alt="Us vs top teams">
+            <figcaption>The top teams scored above 0.96 on page accuracy. We scored 0.54. That gap is the entire story of this competition.</figcaption>
+        </figure>
     </div>
 
-    <table>
-        <thead><tr><th>Pages Cited</th><th>Precision</th><th>Recall</th><th>F<sub>2.5</sub></th></tr></thead>
-        <tbody>
-            <tr><td>3</td><td>1.00</td><td>1.00</td><td><strong>1.000</strong></td></tr>
-            <tr><td>5</td><td>0.60</td><td>1.00</td><td><strong>0.928</strong></td></tr>
-            <tr><td>8</td><td>0.38</td><td>1.00</td><td>0.805</td></tr>
-            <tr><td>13 (our v2)</td><td>0.23</td><td>1.00</td><td>0.660</td></tr>
-            <tr><td>42 (our v1)</td><td>0.07</td><td>1.00</td><td>0.363</td></tr>
-        </tbody>
-    </table>
+    <!-- SECTION 4 -->
+    <div class="reveal">
+        <div class="section-num">04 &mdash; The Big Mistake</div>
+        <h2>The Grounding Trap</h2>
 
-    <div class="fig">
-        <img src="img/grounding_impact.png" alt="Grounding impact">
-        <figcaption>Grounding is the dominant lever. G from 0.54 to 0.85 = +57%. Perfecting Det = +12%. Better Asst = +3%.</figcaption>
+        <div class="simple-box">
+            <div class="emoji">&#x1F4A5;</div>
+            <div class="explain">
+                Here's the trap we fell into. The scoring formula says
+                "recall matters 6.25x more than precision." We read that as
+                <strong>"cite MORE pages to be safe."</strong>
+                <br><br>
+                But think about it: if the real answer is on <strong>3 pages</strong>,
+                and you point to <strong>42 pages</strong>, yes you found the right 3 &mdash;
+                but you also pointed to 39 wrong pages. The formula punishes that hard.
+                <br><br>
+                It's like someone asks "which drawer has the socks?" and you open <em>every drawer in the house</em>.
+                Technically you found the socks, but you also wasted everyone's time.
+            </div>
+        </div>
+
+        <figure class="fig">
+            <img src="img/fbeta_sensitivity.png" alt="The penalty for citing too many pages">
+            <figcaption>The curve drops fast. At 3 pages (perfect): score = 1.0. At 5 pages: 0.93 (still fine). At 13 pages (us): 0.66. At 42 pages (our first try): 0.36. Ouch.</figcaption>
+        </figure>
+
+        <div class="compare">
+            <div class="compare-card bad">
+                <div class="label">What We Did</div>
+                <div class="value">12.8</div>
+                <div class="desc">Average pages cited</div>
+            </div>
+            <div class="compare-card good">
+                <div class="label">What We Should Have Done</div>
+                <div class="value">4.2</div>
+                <div class="desc">Average pages cited</div>
+            </div>
+        </div>
+
+        <div class="table-wrap">
+            <table>
+                <thead><tr><th>Pages You Cite</th><th>Precision</th><th>Recall</th><th>Score</th></tr></thead>
+                <tbody>
+                    <tr><td>3 (perfect)</td><td>1.00</td><td>1.00</td><td><strong>1.000</strong> &#x2705;</td></tr>
+                    <tr><td>5 (close enough)</td><td>0.60</td><td>1.00</td><td><strong>0.928</strong> &#x2705;</td></tr>
+                    <tr><td>8</td><td>0.38</td><td>1.00</td><td>0.805</td></tr>
+                    <tr><td>13 (our submission)</td><td>0.23</td><td>1.00</td><td>0.660 &#x1F7E1;</td></tr>
+                    <tr><td>42 (our first try)</td><td>0.07</td><td>1.00</td><td>0.363 &#x1F534;</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <figure class="fig">
+            <img src="img/grounding_impact.png" alt="What matters most">
+            <figcaption>If we fixed just the page citations: +57% score improvement. If we perfected answers: only +12%. Pages mattered 5x more than anything else.</figcaption>
+        </figure>
+
+        <figure class="fig">
+            <img src="img/page_distribution.png" alt="How many pages we cited per question">
+            <figcaption>Our distribution: average 12.8 pages per question. The sweet spot is 3-6 pages. We were way over.</figcaption>
+        </figure>
+
+        <figure class="fig">
+            <img src="img/sensitivity_analysis.png" alt="What-if analysis">
+            <figcaption>Our "what if" analysis. Fixing page citations alone would have changed the result more than fixing everything else combined.</figcaption>
+        </figure>
+
+        <div class="insight">
+            <div class="icon">&#x1F4A1;</div>
+            <p>
+                <strong>The fix we found too late:</strong> If we had cited 4.2 pages on average instead of 12.8,
+                our score would have been <span class="big-number">~0.68</span> instead of 0.435.
+                A <strong>57% improvement</strong> from changing one number. But we only had 2 submissions
+                and used them both before figuring this out.
+            </p>
+        </div>
     </div>
 
-    <div class="fig">
-        <img src="img/page_distribution.png" alt="Page distribution">
-        <figcaption>Our citation distribution. Mean 12.8 pages, well above the optimal 3&ndash;6 range.</figcaption>
+    <!-- SECTION 5 -->
+    <div class="reveal">
+        <div class="section-num">05 &mdash; What We Learned</div>
+        <h2>Lessons for Next Time</h2>
+
+        <div class="lesson">
+            <div class="lesson-num">Lesson 01</div>
+            <h4>&#x1F4CA; Do the Math First</h4>
+            <p>
+                We spent two weeks making better answers and lost 40% of the score to a page-citation
+                strategy we picked without doing basic math. One spreadsheet would have changed everything.
+            </p>
+        </div>
+
+        <div class="lesson">
+            <div class="lesson-num">Lesson 02</div>
+            <h4>&#x1F3AF; Simple Routing Beats Fancy Search</h4>
+            <p>
+                When questions name specific documents, just look them up directly.
+                Pattern matching gave us 96% coverage with zero AI cost and zero errors.
+            </p>
+        </div>
+
+        <div class="lesson">
+            <div class="lesson-num">Lesson 03</div>
+            <h4>&#x1F916; Let the AI Pick the Pages</h4>
+            <p>
+                When the AI reads a full document, it knows which pages matter.
+                That signal is better than any search algorithm. Trust it.
+            </p>
+        </div>
+
+        <div class="lesson">
+            <div class="lesson-num">Lesson 04</div>
+            <h4>&#x1F3B0; Save Your Submissions</h4>
+            <p>
+                Two attempts for the final round. We used both on the same broken strategy
+                and found the fix one hour too late. Always test your weakest metric first.
+            </p>
+        </div>
+
+        <div class="lesson">
+            <div class="lesson-num">Lesson 05</div>
+            <h4>&#x274C; What Didn't Help</h4>
+            <p>
+                AI page reranking (added delay, slightly hurt accuracy).
+                Voting across multiple answers (better accuracy but 3x slower).
+                Embedding search for already-routed questions (just added noise).
+            </p>
+        </div>
     </div>
 
-    <div class="fig">
-        <img src="img/sensitivity_analysis.png" alt="Sensitivity analysis">
-        <figcaption>What-if analysis. Fixing grounding alone would have changed our result more than fixing everything else combined.</figcaption>
+    <!-- SECTION 6 -->
+    <div class="reveal">
+        <div class="section-num">06 &mdash; If We Could Do It Again</div>
+        <h2>What I'd Change</h2>
+
+        <ol>
+            <li>Start with the scoring math, not the code</li>
+            <li>Test page-citation accuracy during warmup, not just answer quality</li>
+            <li>Only cite pages the AI explicitly mentions &mdash; no guessing</li>
+            <li>Build a local test system to iterate without wasting submissions</li>
+            <li>Save at least one submission for a completely different approach</li>
+        </ol>
     </div>
 
-    <h2><span class="num">05</span>Lessons</h2>
+    <!-- SECTION 7 -->
+    <div class="reveal">
+        <div class="section-num">07 &mdash; Bottom Line</div>
+        <h2>Conclusion</h2>
 
-    <h3>1. Do the math first</h3>
-    <p>
-        We spent two weeks on answer quality and lost 40% of the score to a grounding strategy
-        we chose without computing F-beta sensitivity. One spreadsheet calculation would have changed everything.
-    </p>
-
-    <h3>2. Routing beats retrieval</h3>
-    <p>
-        For domain-specific corpora where questions name documents, regex routing outperforms
-        embedding similarity. 96% coverage, zero hallucination risk, zero cost.
-    </p>
-
-    <h3>3. Let the LLM cite pages</h3>
-    <p>
-        When the model sees the full document, it can tell you which pages matter. That signal
-        is more precise than any retrieval heuristic. Trust it.
-    </p>
-
-    <h3>4. Submission budget is everything</h3>
-    <p>
-        Two attempts for the final phase. We used both on the same flawed strategy and discovered
-        the fix an hour too late. Validate your weakest metric first.
-    </p>
-
-    <h3>5. What didn't help</h3>
-    <ul>
-        <li><strong>LLM page reranking:</strong> added latency, slightly hurt grounding</li>
-        <li><strong>Self-consistency voting:</strong> +15% accuracy but 3x slower</li>
-        <li><strong>Embedding search for routed questions:</strong> unnecessary noise</li>
-        <li><strong>Cross-reference expansion:</strong> added non-gold pages</li>
-    </ul>
-
-    <h2><span class="num">06</span>What I'd change</h2>
-    <ol>
-        <li>Start with the F-beta spreadsheet, not the pipeline</li>
-        <li>Validate grounding strategy during warmup, not just answer quality</li>
-        <li>Cite only LLM-reported pages &mdash; no expansion heuristics</li>
-        <li>Build a local evaluation harness to iterate offline</li>
-        <li>Save at least one submission for a fundamentally different approach</li>
-    </ol>
-
-    <h2><span class="num">07</span>Conclusion</h2>
-    <p>
-        Document routing + full-document context works. 96% coverage, strong answers, perfect TTFT.
-        The system's weakness was a single design choice: how many pages to cite. We chose 13 when
-        the answer was 5.
-    </p>
-    <p>
-        Post-competition analysis: with 4.2 pages average, our score would have been <strong>~0.68</strong> instead
-        of 0.435. A 57% improvement from one number.
-    </p>
-    <p>
-        In multiplicative scoring, every factor is a gate. Optimize the weakest one first.
-    </p>
-
-    <div class="callout">
         <p>
-            Full source code:
-            <a href="https://github.com/alexff91/legal-champ" target="_blank" style="color: var(--accent)">github.com/alexff91/legal-champ</a>
+            Our document router worked beautifully. 96% coverage, strong answers, perfect speed.
+            The system's weakness was one design choice: <strong>how many pages to cite</strong>.
+            We chose 13 when the answer was 5.
         </p>
+
+        <div class="compare">
+            <div class="compare-card bad">
+                <div class="label">Our Score</div>
+                <div class="value">0.435</div>
+                <div class="desc">With 12.8 pages avg</div>
+            </div>
+            <div class="compare-card good">
+                <div class="label">Should Have Been</div>
+                <div class="value">~0.68</div>
+                <div class="desc">With 4.2 pages avg</div>
+            </div>
+        </div>
+
+        <div class="insight">
+            <div class="icon">&#x1F3C6;</div>
+            <p>
+                <strong>The takeaway:</strong> When your score is a multiplication of many factors,
+                find the weakest one and fix it first. Everything else is a distraction.
+            </p>
+        </div>
+
+        <div class="simple-box">
+            <div class="emoji">&#x1F4BB;</div>
+            <div class="explain">
+                Want to see all the code? It's open source:
+                <a href="https://github.com/alexff91/legal-champ" target="_blank" style="color: var(--accent); text-decoration: underline;">github.com/alexff91/legal-champ</a>
+            </div>
+        </div>
     </div>
 
-    <h2><span class="num">&mdash;</span>References</h2>
-    <div class="refs">
-        <p>[1] Agentic RAG Legal Challenge 2026. <a href="https://agentic-challenge.ai/">agentic-challenge.ai</a></p>
-        <p>[2] Cormack et al. "Reciprocal Rank Fusion." SIGIR 2009.</p>
-        <p>[3] Wang et al. "Summary-Augmented Chunking." arXiv:2510.06999, 2025.</p>
-        <p>[4] Gao et al. "HyDE: Zero-Shot Dense Retrieval." ACL 2023.</p>
-        <p>[5] Abdullin. "How to Build the Best RAG." <a href="https://abdullin.com/ilya/how-to-build-best-rag/">abdullin.com</a></p>
-        <p>[6] Robertson & Zaragoza. "BM25 and Beyond." FnTIR 2009.</p>
-        <p>[7] Lewis et al. "Retrieval-Augmented Generation." NeurIPS 2020.</p>
+    <!-- REFERENCES -->
+    <div class="reveal">
+        <div class="section-num">References</div>
+        <div class="refs">
+            <p>[1] Agentic RAG Legal Challenge 2026. <a href="https://agentic-challenge.ai/">agentic-challenge.ai</a></p>
+            <p>[2] Cormack et al. "Reciprocal Rank Fusion." SIGIR 2009.</p>
+            <p>[3] Wang et al. "Summary-Augmented Chunking." arXiv:2510.06999, 2025.</p>
+            <p>[4] Gao et al. "HyDE: Zero-Shot Dense Retrieval." ACL 2023.</p>
+            <p>[5] Abdullin. "How to Build the Best RAG." <a href="https://abdullin.com/ilya/how-to-build-best-rag/">abdullin.com</a></p>
+            <p>[6] Robertson & Zaragoza. "BM25 and Beyond." FnTIR 2009.</p>
+            <p>[7] Lewis et al. "Retrieval-Augmented Generation." NeurIPS 2020.</p>
+        </div>
     </div>
 
 </div>
@@ -429,6 +701,30 @@
     <span>&copy; 2026 <a href="/">Aleksandr Fedorov</a></span>
     <span><a href="https://github.com/alexff91">alexff91</a></span>
 </footer>
+
+</div>
+
+<!-- Reading progress bar -->
+<script>
+window.addEventListener('scroll', () => {
+    const h = document.documentElement;
+    const pct = (h.scrollTop / (h.scrollHeight - h.clientHeight)) * 100;
+    document.getElementById('progressBar').style.width = pct + '%';
+});
+</script>
+
+<!-- Scroll reveal animations -->
+<script>
+const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+        if (e.isIntersecting) {
+            e.target.classList.add('visible');
+        }
+    });
+}, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
+
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+</script>
 
 </body>
 </html>

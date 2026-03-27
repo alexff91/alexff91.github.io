@@ -4,279 +4,384 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Aleksandr Fedorov</title>
-    <meta name="description" content="AI Engineer. Building retrieval systems and legal AI.">
+    <meta name="description" content="AI Engineer. I teach computers to read legal documents.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&family=Newsreader:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         :root {
-            --black: #111;
-            --white: #fafaf9;
-            --gray: #888;
-            --light: #e8e6e3;
-            --accent: #e63946;
+            --bg: #0a0a0a;
+            --card: #141414;
+            --card-hover: #1a1a1a;
+            --border: #222;
+            --text: #e0e0e0;
+            --muted: #666;
+            --accent: #ff4d4d;
+            --accent2: #ff8a4d;
+            --accent3: #ffd54d;
+            --green: #4dff88;
         }
 
         body {
-            font-family: 'Space Grotesk', sans-serif;
-            background: var(--white);
-            color: var(--black);
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg);
+            color: var(--text);
             -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
         }
 
         ::selection { background: var(--accent); color: white; }
+        a { color: inherit; text-decoration: none; }
 
-        a { color: inherit; }
+        /* ── Grain overlay ── */
+        body::before {
+            content: '';
+            position: fixed; inset: 0; z-index: 9999;
+            pointer-events: none;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+            background-repeat: repeat;
+        }
+
+        /* ── Floating shapes ── */
+        .shapes {
+            position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
+        }
+        .shape {
+            position: absolute; border-radius: 50%; opacity: 0.06;
+            animation: float 20s ease-in-out infinite;
+        }
+        .shape:nth-child(1) {
+            width: 400px; height: 400px; background: var(--accent);
+            top: -100px; right: -100px;
+            animation-duration: 25s;
+        }
+        .shape:nth-child(2) {
+            width: 300px; height: 300px; background: var(--accent2);
+            bottom: 20%; left: -80px;
+            animation-duration: 30s; animation-delay: -5s;
+        }
+        .shape:nth-child(3) {
+            width: 200px; height: 200px; background: var(--accent3);
+            top: 50%; right: 10%;
+            animation-duration: 22s; animation-delay: -10s;
+        }
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            25% { transform: translate(30px, -40px) scale(1.05); }
+            50% { transform: translate(-20px, 20px) scale(0.95); }
+            75% { transform: translate(10px, 40px) scale(1.02); }
+        }
+
+        /* ── Content wrapper ── */
+        .content { position: relative; z-index: 1; }
 
         /* ── Nav ── */
         nav {
-            padding: 2rem 3rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: baseline;
-            border-bottom: 1.5px solid var(--black);
+            padding: 1.5rem 2rem;
+            display: flex; justify-content: space-between; align-items: center;
+            border-bottom: 1px solid var(--border);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            position: sticky; top: 0; z-index: 100;
+            background: rgba(10,10,10,0.8);
         }
         .nav-name {
-            font-family: 'Space Mono', monospace;
-            font-size: 0.85rem;
-            font-weight: 700;
-            text-decoration: none;
-            letter-spacing: -0.3px;
+            font-weight: 800; font-size: 0.9rem;
+            letter-spacing: -0.5px;
         }
-        .nav-links { display: flex; gap: 2rem; }
+        .nav-dot {
+            display: inline-block; width: 8px; height: 8px;
+            background: var(--accent); border-radius: 50%;
+            margin-right: 8px;
+            animation: pulse 2s ease-in-out infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.8); }
+        }
+        .nav-links { display: flex; gap: 1.5rem; }
         .nav-links a {
-            font-size: 0.8rem;
-            text-decoration: none;
-            color: var(--gray);
-            transition: color 0.15s;
-            font-weight: 500;
+            font-size: 0.8rem; font-weight: 500; color: var(--muted);
+            transition: color 0.2s;
         }
-        .nav-links a:hover { color: var(--black); }
+        .nav-links a:hover { color: var(--text); }
 
         /* ── Hero ── */
         .hero {
-            padding: 8rem 3rem 6rem;
-            max-width: 720px;
+            padding: 10rem 2rem 6rem;
+            max-width: 800px;
+            animation: fadeUp 1s ease-out;
+        }
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(40px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .hero-badge {
+            display: inline-block;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 2px;
+            color: var(--accent);
+            background: rgba(255,77,77,0.1);
+            border: 1px solid rgba(255,77,77,0.2);
+            padding: 0.4rem 1rem; border-radius: 100px;
+            margin-bottom: 2rem;
         }
         .hero h1 {
-            font-size: clamp(3rem, 8vw, 5.5rem);
-            font-weight: 700;
+            font-size: clamp(3rem, 9vw, 6rem);
+            font-weight: 900;
             line-height: 0.95;
             letter-spacing: -3px;
             margin-bottom: 2rem;
         }
-        .hero h1 .italic {
-            font-family: 'Newsreader', serif;
-            font-style: italic;
-            font-weight: 400;
+        .hero h1 .gradient {
+            background: linear-gradient(135deg, var(--accent), var(--accent2), var(--accent3));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
         }
         .hero p {
-            font-size: 1.1rem;
-            color: var(--gray);
+            font-size: 1.2rem;
+            color: var(--muted);
             line-height: 1.7;
-            max-width: 480px;
+            max-width: 520px;
         }
-        .hero-links {
+        .hero-buttons {
             margin-top: 2.5rem;
-            display: flex;
-            gap: 0.5rem;
+            display: flex; gap: 0.8rem; flex-wrap: wrap;
         }
-        .hero-links a {
-            font-family: 'Space Mono', monospace;
-            font-size: 0.75rem;
-            text-decoration: none;
-            padding: 0.55rem 1.1rem;
-            border: 1.5px solid var(--black);
-            border-radius: 100px;
-            transition: all 0.2s;
-        }
-        .hero-links a:hover {
-            background: var(--black);
-            color: var(--white);
-        }
-
-        /* ── Divider ── */
-        .divider {
+        .btn {
+            font-family: 'Inter', sans-serif;
+            font-size: 0.85rem; font-weight: 600;
+            padding: 0.75rem 1.5rem;
+            border-radius: 10px;
+            transition: all 0.25s;
+            cursor: pointer;
             border: none;
-            border-top: 1.5px solid var(--black);
-            margin: 0 3rem;
+        }
+        .btn-primary {
+            background: var(--accent); color: white;
+        }
+        .btn-primary:hover {
+            background: #ff6666;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 30px rgba(255,77,77,0.3);
+        }
+        .btn-ghost {
+            background: transparent; color: var(--text);
+            border: 1px solid var(--border);
+        }
+        .btn-ghost:hover {
+            border-color: var(--muted);
+            transform: translateY(-2px);
         }
 
-        /* ── Writing section ── */
-        .writing {
-            padding: 4rem 3rem;
-        }
-        .section-label {
-            font-family: 'Space Mono', monospace;
-            font-size: 0.7rem;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            color: var(--gray);
-            margin-bottom: 3rem;
-        }
-
-        .post {
-            display: block;
-            text-decoration: none;
-            padding: 2rem 0;
-            border-bottom: 1px solid var(--light);
-            transition: padding-left 0.2s;
-        }
-        .post:first-of-type { border-top: 1px solid var(--light); }
-        .post:hover { padding-left: 1rem; }
-
-        .post-date {
-            font-family: 'Space Mono', monospace;
-            font-size: 0.7rem;
-            color: var(--gray);
-            margin-bottom: 0.5rem;
-        }
-        .post-title {
-            font-size: 1.5rem;
-            font-weight: 600;
-            letter-spacing: -0.5px;
-            margin-bottom: 0.4rem;
-            line-height: 1.3;
-        }
-        .post-desc {
-            font-size: 0.9rem;
-            color: var(--gray);
-            line-height: 1.6;
-        }
-        .post-tags {
-            margin-top: 0.6rem;
-            display: flex;
-            gap: 0.4rem;
-        }
-        .post-tags span {
-            font-family: 'Space Mono', monospace;
-            font-size: 0.6rem;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            padding: 0.25rem 0.6rem;
-            background: var(--light);
-            border-radius: 2px;
-        }
-
-        /* ── Number ── */
-        .stat-row {
-            display: flex;
-            gap: 4rem;
-            padding: 4rem 3rem;
-            flex-wrap: wrap;
+        /* ── Stats ── */
+        .stats {
+            display: grid; grid-template-columns: repeat(4, 1fr);
+            gap: 1px; background: var(--border);
+            margin: 0 2rem; border-radius: 16px; overflow: hidden;
+            animation: fadeUp 1s ease-out 0.3s both;
         }
         .stat {
-            display: flex;
-            flex-direction: column;
+            background: var(--card);
+            padding: 2.5rem 1.5rem;
+            text-align: center;
+            transition: background 0.3s;
         }
+        .stat:hover { background: var(--card-hover); }
+        .stat-icon { font-size: 1.8rem; margin-bottom: 0.8rem; }
         .stat-number {
-            font-family: 'Space Mono', monospace;
-            font-size: 2.5rem;
-            font-weight: 700;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 2.5rem; font-weight: 700;
             letter-spacing: -2px;
+            margin-bottom: 0.3rem;
         }
-        .stat-number .accent { color: var(--accent); }
+        .stat-number .unit {
+            font-size: 1.2rem;
+            background: linear-gradient(135deg, var(--accent), var(--accent2));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
         .stat-label {
-            font-size: 0.75rem;
-            color: var(--gray);
-            margin-top: 0.3rem;
+            font-size: 0.78rem; color: var(--muted); line-height: 1.4;
+        }
+
+        /* ── Post Card ── */
+        .posts {
+            padding: 4rem 2rem;
+            animation: fadeUp 1s ease-out 0.5s both;
+        }
+        .section-title {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 3px;
+            color: var(--muted); margin-bottom: 2rem;
+        }
+        .post-card {
+            display: block;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 2.5rem;
+            transition: all 0.35s;
+            position: relative;
+            overflow: hidden;
+        }
+        .post-card::before {
+            content: '';
+            position: absolute; top: 0; left: 0; right: 0; height: 3px;
+            background: linear-gradient(90deg, var(--accent), var(--accent2), var(--accent3));
+            opacity: 0; transition: opacity 0.35s;
+        }
+        .post-card:hover {
+            border-color: var(--muted);
+            transform: translateY(-4px);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+        }
+        .post-card:hover::before { opacity: 1; }
+
+        .post-card .date {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.7rem; color: var(--muted);
+            margin-bottom: 1rem;
+        }
+        .post-card h2 {
+            font-size: 1.6rem; font-weight: 800;
+            letter-spacing: -0.5px; margin-bottom: 0.8rem;
+            line-height: 1.3;
+        }
+        .post-card .desc {
+            font-size: 0.95rem; color: var(--muted); line-height: 1.7;
+            margin-bottom: 1.2rem;
+        }
+        .post-tags { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+        .tag {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.65rem; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 1px;
+            padding: 0.3rem 0.7rem;
+            border-radius: 6px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid var(--border);
+        }
+        .post-arrow {
+            position: absolute; right: 2.5rem; top: 50%;
+            transform: translateY(-50%);
+            font-size: 1.5rem; color: var(--muted);
+            transition: all 0.3s;
+        }
+        .post-card:hover .post-arrow {
+            color: var(--accent);
+            transform: translateY(-50%) translateX(5px);
         }
 
         /* ── Footer ── */
         footer {
-            padding: 3rem;
-            border-top: 1.5px solid var(--black);
-            display: flex;
-            justify-content: space-between;
-            align-items: baseline;
-            flex-wrap: wrap;
-            gap: 1rem;
+            padding: 2rem;
+            border-top: 1px solid var(--border);
+            display: flex; justify-content: space-between;
+            flex-wrap: wrap; gap: 1rem;
         }
         footer span {
-            font-family: 'Space Mono', monospace;
-            font-size: 0.7rem;
-            color: var(--gray);
+            font-size: 0.75rem; color: var(--muted);
         }
+        footer a { color: var(--accent); }
 
+        /* ── Responsive ── */
         @media (max-width: 640px) {
-            nav, .hero, .writing, .stat-row, footer { padding-left: 1.5rem; padding-right: 1.5rem; }
-            .divider { margin: 0 1.5rem; }
-            .hero { padding-top: 5rem; padding-bottom: 4rem; }
-            .stat-row { gap: 2rem; }
+            .hero { padding: 6rem 1.5rem 4rem; }
+            .stats { grid-template-columns: repeat(2, 1fr); margin: 0 1.5rem; }
+            .posts { padding: 3rem 1.5rem; }
+            .post-card { padding: 2rem; }
+            .post-arrow { display: none; }
+            footer { padding: 2rem 1.5rem; }
         }
     </style>
 </head>
 <body>
 
+<div class="shapes">
+    <div class="shape"></div>
+    <div class="shape"></div>
+    <div class="shape"></div>
+</div>
+
+<div class="content">
+
     <nav>
-        <a href="/" class="nav-name">Aleksandr Fedorov</a>
+        <a href="/" class="nav-name"><span class="nav-dot"></span>Aleksandr Fedorov</a>
         <div class="nav-links">
-            <a href="/posts/arlc-2026">Writing</a>
+            <a href="/posts/arlc-2026">Article</a>
             <a href="https://github.com/alexff91" target="_blank">GitHub</a>
             <a href="https://linkedin.com/in/alexff91" target="_blank">LinkedIn</a>
         </div>
     </nav>
 
     <section class="hero">
-        <h1>Engineer who<br>builds <span class="italic">retrieval</span><br>systems.</h1>
+        <div class="hero-badge">AI Engineer &bull; Dubai AI Week 2026</div>
+        <h1>I teach<br>computers to<br><span class="gradient">read law.</span></h1>
         <p>
-            I work on production AI &mdash; RAG pipelines, legal document intelligence,
-            and systems that find the right page in a thousand-page corpus.
+            Imagine a giant library with thousands of legal pages.
+            I build systems that find the exact right page &mdash; fast.
+            Like a really smart bookmark for lawyers.
         </p>
-        <div class="hero-links">
-            <a href="https://github.com/alexff91/legal-champ" target="_blank">Latest Project</a>
-            <a href="/posts/arlc-2026">Read the Writeup</a>
+        <div class="hero-buttons">
+            <a href="/posts/arlc-2026" class="btn btn-primary">Read My Story &rarr;</a>
+            <a href="https://github.com/alexff91/legal-champ" target="_blank" class="btn btn-ghost">See the Code</a>
         </div>
     </section>
 
-    <hr class="divider">
-
-    <div class="stat-row">
+    <div class="stats">
         <div class="stat">
+            <div class="stat-icon">&#x1F4DA;</div>
             <div class="stat-number">900</div>
-            <div class="stat-label">Legal questions answered</div>
+            <div class="stat-label">Questions answered</div>
         </div>
         <div class="stat">
+            <div class="stat-icon">&#x1F4C4;</div>
             <div class="stat-number">298</div>
-            <div class="stat-label">Documents indexed</div>
+            <div class="stat-label">Documents read</div>
         </div>
         <div class="stat">
-            <div class="stat-number">96<span class="accent">%</span></div>
-            <div class="stat-label">Routing coverage</div>
+            <div class="stat-icon">&#x1F3AF;</div>
+            <div class="stat-number">96<span class="unit">%</span></div>
+            <div class="stat-label">Found the right doc</div>
         </div>
         <div class="stat">
-            <div class="stat-number">52<span class="accent">min</span></div>
-            <div class="stat-label">Full pipeline runtime</div>
+            <div class="stat-icon">&#x26A1;</div>
+            <div class="stat-number">52<span class="unit">min</span></div>
+            <div class="stat-label">Total run time</div>
         </div>
     </div>
 
-    <hr class="divider">
-
-    <section class="writing">
-        <div class="section-label">Writing</div>
-
-        <a href="/posts/arlc-2026" class="post">
-            <div class="post-date">March 22, 2026</div>
-            <div class="post-title">The Grounding Trap: Building a Legal RAG System for ARLC 2026</div>
-            <div class="post-desc">
-                How document routing beat vector search, why citing too many pages killed our score,
-                and what the F-beta formula actually means when your gold standard is 3 pages.
+    <section class="posts">
+        <div class="section-title">Writing</div>
+        <a href="/posts/arlc-2026" class="post-card">
+            <div class="date">March 22, 2026</div>
+            <h2>The Grounding Trap: How Citing Too Many Pages Killed Our Score</h2>
+            <div class="desc">
+                We built a smart system that answers legal questions. It was really good at finding answers &mdash;
+                but it pointed to too many pages, and that cost us almost half our score. Here's what happened.
             </div>
             <div class="post-tags">
-                <span>RAG</span>
-                <span>Legal AI</span>
-                <span>Competition</span>
-                <span>Dubai AI Week</span>
+                <span class="tag">RAG</span>
+                <span class="tag">Legal AI</span>
+                <span class="tag">Competition</span>
+                <span class="tag">Dubai AI Week</span>
             </div>
+            <div class="post-arrow">&rarr;</div>
         </a>
     </section>
 
     <footer>
         <span>&copy; 2026 Aleksandr Fedorov</span>
-        <span>alexff91</span>
+        <span><a href="https://github.com/alexff91">alexff91</a></span>
     </footer>
+
+</div>
 
 </body>
 </html>
