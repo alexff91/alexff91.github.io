@@ -9,6 +9,18 @@
     <meta property="og:description" content="96% document routing, dual-model LLM, and the mistake that cost us 40%.">
     <meta property="og:type" content="article">
     <meta property="og:image" content="https://alexff91.github.io/posts/arlc-2026/img/architecture.png">
+    <meta property="og:url" content="https://alexff91.github.io/posts/arlc-2026/">
+    <meta property="og:site_name" content="Aleksandr Fedorov">
+    <meta property="article:published_time" content="2026-03-22">
+    <meta property="article:author" content="Aleksandr Fedorov">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="The Grounding Trap: Building a Legal RAG System for ARLC 2026">
+    <meta name="twitter:description" content="96% document routing, dual-model LLM, and the mistake that cost us 40%.">
+    <meta name="twitter:image" content="https://alexff91.github.io/posts/arlc-2026/img/architecture.png">
+    <meta name="author" content="Aleksandr Fedorov">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://alexff91.github.io/posts/arlc-2026/">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>AF</text></svg>">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -20,7 +32,7 @@
             --card-hover: #1a1a1a;
             --border: #222;
             --text: #d4d4d4;
-            --muted: #666;
+            --muted: #777;
             --accent: #ff4d4d;
             --accent2: #ff8a4d;
             --accent3: #ffd54d;
@@ -347,8 +359,8 @@
     <a href="/" class="nav-name"><span class="nav-dot"></span>Aleksandr Fedorov</a>
     <div class="nav-links">
         <a href="/">Home</a>
-        <a href="https://github.com/alexff91/legal-champ" target="_blank">Source Code</a>
-        <a href="https://github.com/alexff91" target="_blank">GitHub</a>
+        <a href="https://github.com/alexff91/legal-champ" target="_blank" rel="noopener noreferrer">Source Code</a>
+        <a href="https://github.com/alexff91" target="_blank" rel="noopener noreferrer">GitHub</a>
     </div>
 </nav>
 
@@ -407,7 +419,7 @@
         </div>
 
         <figure class="fig">
-            <img src="img/question_types.png" alt="Types of questions">
+            <img loading="lazy" src="img/question_types.png" alt="Types of questions">
             <figcaption>The 900 questions came in different types. Some need a simple yes/no. Others need a number, a name, or a full paragraph. We used different AI models for different types.</figcaption>
         </figure>
     </div>
@@ -431,7 +443,7 @@
         </div>
 
         <figure class="fig">
-            <img src="img/architecture.png" alt="How our system works">
+            <img loading="lazy" src="img/architecture.png" alt="How our system works">
             <figcaption>Three paths: (1) Small document? Read the whole thing. (2) Big document? Read the relevant chunks. (3) Can't find the document? Search for it. Path 1 and 2 handle 96% of questions.</figcaption>
         </figure>
 
@@ -443,7 +455,7 @@
         </p>
 
         <figure class="fig">
-            <img src="img/routing_coverage.png" alt="How questions were routed">
+            <img loading="lazy" src="img/routing_coverage.png" alt="How questions were routed">
             <figcaption>87% got the full document as context. 9% got filtered chunks from large documents. Only 4% needed vector search as a fallback.</figcaption>
         </figure>
 
@@ -474,7 +486,7 @@
         <h2>How Did We Do?</h2>
 
         <figure class="fig">
-            <img src="img/score_progression.png" alt="Our score over time">
+            <img loading="lazy" src="img/score_progression.png" alt="Our score over time">
             <figcaption>We improved over 15 warmup rounds. Our answer quality reached 0.943 early. But the "Pages" score (grounding) climbed slowly and never broke 0.61.</figcaption>
         </figure>
 
@@ -491,7 +503,7 @@
         </div>
 
         <figure class="fig">
-            <img src="img/leaderboard_comparison.png" alt="Us vs top teams">
+            <img loading="lazy" src="img/leaderboard_comparison.png" alt="Us vs top teams">
             <figcaption>The top teams scored above 0.96 on page accuracy. We scored 0.54. That gap is the entire story of this competition.</figcaption>
         </figure>
     </div>
@@ -518,7 +530,7 @@
         </div>
 
         <figure class="fig">
-            <img src="img/fbeta_sensitivity.png" alt="The penalty for citing too many pages">
+            <img loading="lazy" src="img/fbeta_sensitivity.png" alt="The penalty for citing too many pages">
             <figcaption>The curve drops fast. At 3 pages (perfect): score = 1.0. At 5 pages: 0.93 (still fine). At 13 pages (us): 0.66. At 42 pages (our first try): 0.36. Ouch.</figcaption>
         </figure>
 
@@ -549,17 +561,17 @@
         </div>
 
         <figure class="fig">
-            <img src="img/grounding_impact.png" alt="What matters most">
+            <img loading="lazy" src="img/grounding_impact.png" alt="What matters most">
             <figcaption>If we fixed just the page citations: +57% score improvement. If we perfected answers: only +12%. Pages mattered 5x more than anything else.</figcaption>
         </figure>
 
         <figure class="fig">
-            <img src="img/page_distribution.png" alt="How many pages we cited per question">
+            <img loading="lazy" src="img/page_distribution.png" alt="How many pages we cited per question">
             <figcaption>Our distribution: average 12.8 pages per question. The sweet spot is 3-6 pages. We were way over.</figcaption>
         </figure>
 
         <figure class="fig">
-            <img src="img/sensitivity_analysis.png" alt="What-if analysis">
+            <img loading="lazy" src="img/sensitivity_analysis.png" alt="What-if analysis">
             <figcaption>Our "what if" analysis. Fixing page citations alone would have changed the result more than fixing everything else combined.</figcaption>
         </figure>
 
@@ -676,7 +688,7 @@
             <div class="emoji">&#x1F4BB;</div>
             <div class="explain">
                 Want to see all the code? It's open source:
-                <a href="https://github.com/alexff91/legal-champ" target="_blank" style="color: var(--accent); text-decoration: underline;">github.com/alexff91/legal-champ</a>
+                <a href="https://github.com/alexff91/legal-champ" target="_blank" rel="noopener noreferrer" style="color: var(--accent); text-decoration: underline;">github.com/alexff91/legal-champ</a>
             </div>
         </div>
     </div>
@@ -699,7 +711,10 @@
 
 <footer>
     <span>&copy; 2026 <a href="/">Aleksandr Fedorov</a></span>
-    <span><a href="https://github.com/alexff91">alexff91</a></span>
+    <div style="display:flex;gap:1.2rem;">
+        <a href="/" style="color:var(--muted);text-decoration:none;">Home</a>
+        <a href="https://github.com/alexff91" rel="noopener noreferrer">alexff91</a>
+    </div>
 </footer>
 
 </div>

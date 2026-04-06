@@ -3,8 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aleksandr Fedorov</title>
-    <meta name="description" content="AI Engineer. I teach computers to read legal documents.">
+    <title>Aleksandr Fedorov — AI Engineer | Personal Blog</title>
+    <meta name="description" content="Aleksandr Fedorov — AI Engineer building systems that read and understand legal documents. Blog about AI, NLP, RAG, and legal tech.">
+    <meta name="author" content="Aleksandr Fedorov">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://alexff91.github.io/">
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="Aleksandr Fedorov — AI Engineer">
+    <meta property="og:description" content="AI Engineer building systems that read and understand legal documents. Writing about RAG, NLP, and legal tech.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://alexff91.github.io/">
+    <meta property="og:locale" content="en_US">
+    <meta property="og:site_name" content="Aleksandr Fedorov">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="Aleksandr Fedorov — AI Engineer">
+    <meta name="twitter:description" content="AI Engineer building systems that read and understand legal documents. Writing about RAG, NLP, and legal tech.">
+
+    <!-- Favicon (inline SVG) -->
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>AF</text></svg>">
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
@@ -17,25 +37,27 @@
             --card-hover: #1a1a1a;
             --border: #222;
             --text: #e0e0e0;
-            --muted: #666;
+            --muted: #777;
             --accent: #ff4d4d;
             --accent2: #ff8a4d;
             --accent3: #ffd54d;
             --green: #4dff88;
+            --max-width: 900px;
         }
 
         body {
-            font-family: 'Inter', -apple-system, sans-serif;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             background: var(--bg);
             color: var(--text);
             -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
             overflow-x: hidden;
         }
 
         ::selection { background: var(--accent); color: white; }
         a { color: inherit; text-decoration: none; }
 
-        /* ── Grain overlay ── */
+        /* Grain overlay */
         body::before {
             content: '';
             position: fixed; inset: 0; z-index: 9999;
@@ -44,7 +66,7 @@
             background-repeat: repeat;
         }
 
-        /* ── Floating shapes ── */
+        /* Floating shapes */
         .shapes {
             position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
         }
@@ -74,18 +96,23 @@
             75% { transform: translate(10px, 40px) scale(1.02); }
         }
 
-        /* ── Content wrapper ── */
+        /* Content wrapper */
         .content { position: relative; z-index: 1; }
 
-        /* ── Nav ── */
+        /* Nav */
         nav {
-            padding: 1.5rem 2rem;
+            padding: 1.2rem 2rem;
             display: flex; justify-content: space-between; align-items: center;
             border-bottom: 1px solid var(--border);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
             position: sticky; top: 0; z-index: 100;
             background: rgba(10,10,10,0.8);
+            max-width: 100%;
+        }
+        .nav-inner {
+            display: flex; justify-content: space-between; align-items: center;
+            width: 100%; max-width: var(--max-width); margin: 0 auto;
         }
         .nav-name {
             font-weight: 800; font-size: 0.9rem;
@@ -101,17 +128,18 @@
             0%, 100% { opacity: 1; transform: scale(1); }
             50% { opacity: 0.5; transform: scale(0.8); }
         }
-        .nav-links { display: flex; gap: 1.5rem; }
+        .nav-links { display: flex; gap: 1.5rem; align-items: center; }
         .nav-links a {
             font-size: 0.8rem; font-weight: 500; color: var(--muted);
             transition: color 0.2s;
         }
         .nav-links a:hover { color: var(--text); }
 
-        /* ── Hero ── */
+        /* Hero */
         .hero {
-            padding: 10rem 2rem 6rem;
-            max-width: 800px;
+            padding: 8rem 2rem 5rem;
+            max-width: var(--max-width);
+            margin: 0 auto;
             animation: fadeUp 1s ease-out;
         }
         @keyframes fadeUp {
@@ -130,7 +158,7 @@
             margin-bottom: 2rem;
         }
         .hero h1 {
-            font-size: clamp(3rem, 9vw, 6rem);
+            font-size: clamp(3rem, 8vw, 5.5rem);
             font-weight: 900;
             line-height: 0.95;
             letter-spacing: -3px;
@@ -143,10 +171,10 @@
             background-clip: text;
         }
         .hero p {
-            font-size: 1.2rem;
+            font-size: 1.15rem;
             color: var(--muted);
-            line-height: 1.7;
-            max-width: 520px;
+            line-height: 1.8;
+            max-width: 540px;
         }
         .hero-buttons {
             margin-top: 2.5rem;
@@ -160,6 +188,7 @@
             transition: all 0.25s;
             cursor: pointer;
             border: none;
+            display: inline-flex; align-items: center; gap: 0.5rem;
         }
         .btn-primary {
             background: var(--accent); color: white;
@@ -178,11 +207,13 @@
             transform: translateY(-2px);
         }
 
-        /* ── Stats ── */
+        /* Stats */
         .stats {
             display: grid; grid-template-columns: repeat(4, 1fr);
             gap: 1px; background: var(--border);
-            margin: 0 2rem; border-radius: 16px; overflow: hidden;
+            max-width: var(--max-width);
+            margin: 0 auto;
+            border-radius: 16px; overflow: hidden;
             animation: fadeUp 1s ease-out 0.3s both;
         }
         .stat {
@@ -192,7 +223,7 @@
             transition: background 0.3s;
         }
         .stat:hover { background: var(--card-hover); }
-        .stat-icon { font-size: 1.8rem; margin-bottom: 0.8rem; }
+        .stat-icon { font-size: 1.5rem; margin-bottom: 0.8rem; opacity: 0.8; }
         .stat-number {
             font-family: 'JetBrains Mono', monospace;
             font-size: 2.5rem; font-weight: 700;
@@ -206,19 +237,62 @@
             background-clip: text;
         }
         .stat-label {
-            font-size: 0.78rem; color: var(--muted); line-height: 1.4;
+            font-size: 0.75rem; color: var(--muted); line-height: 1.4;
+            text-transform: uppercase; letter-spacing: 0.5px;
         }
 
-        /* ── Post Card ── */
+        /* About Section */
+        .about {
+            max-width: var(--max-width);
+            margin: 0 auto;
+            padding: 4rem 2rem 2rem;
+            animation: fadeUp 1s ease-out 0.4s both;
+        }
+        .about-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+        .about-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.8rem;
+            transition: all 0.3s;
+        }
+        .about-card:hover {
+            border-color: #333;
+            transform: translateY(-2px);
+        }
+        .about-card h3 {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 0.6rem;
+        }
+        .about-card p {
+            font-size: 0.88rem;
+            color: var(--muted);
+            line-height: 1.7;
+        }
+        .about-card .card-icon {
+            font-size: 1.3rem;
+            margin-bottom: 0.8rem;
+            display: block;
+        }
+
+        /* Posts Section */
         .posts {
-            padding: 4rem 2rem;
+            max-width: var(--max-width);
+            margin: 0 auto;
+            padding: 3rem 2rem 4rem;
             animation: fadeUp 1s ease-out 0.5s both;
         }
         .section-title {
             font-family: 'JetBrains Mono', monospace;
             font-size: 0.7rem; font-weight: 700;
             text-transform: uppercase; letter-spacing: 3px;
-            color: var(--muted); margin-bottom: 2rem;
+            color: var(--muted); margin-bottom: 1.5rem;
         }
         .post-card {
             display: block;
@@ -230,6 +304,9 @@
             position: relative;
             overflow: hidden;
         }
+        .post-card + .post-card {
+            margin-top: 1rem;
+        }
         .post-card::before {
             content: '';
             position: absolute; top: 0; left: 0; right: 0; height: 3px;
@@ -237,7 +314,7 @@
             opacity: 0; transition: opacity 0.35s;
         }
         .post-card:hover {
-            border-color: var(--muted);
+            border-color: #444;
             transform: translateY(-4px);
             box-shadow: 0 20px 60px rgba(0,0,0,0.4);
         }
@@ -249,13 +326,14 @@
             margin-bottom: 1rem;
         }
         .post-card h2 {
-            font-size: 1.6rem; font-weight: 800;
+            font-size: 1.5rem; font-weight: 800;
             letter-spacing: -0.5px; margin-bottom: 0.8rem;
             line-height: 1.3;
         }
         .post-card .desc {
-            font-size: 0.95rem; color: var(--muted); line-height: 1.7;
+            font-size: 0.92rem; color: var(--muted); line-height: 1.7;
             margin-bottom: 1.2rem;
+            max-width: 600px;
         }
         .post-tags { display: flex; gap: 0.5rem; flex-wrap: wrap; }
         .tag {
@@ -278,26 +356,47 @@
             transform: translateY(-50%) translateX(5px);
         }
 
-        /* ── Footer ── */
+        /* Footer */
         footer {
+            max-width: var(--max-width);
+            margin: 0 auto;
             padding: 2rem;
             border-top: 1px solid var(--border);
             display: flex; justify-content: space-between;
+            align-items: center;
             flex-wrap: wrap; gap: 1rem;
         }
         footer span {
             font-size: 0.75rem; color: var(--muted);
         }
-        footer a { color: var(--accent); }
+        .footer-links {
+            display: flex; gap: 1.2rem;
+        }
+        .footer-links a {
+            font-size: 0.75rem; color: var(--muted);
+            transition: color 0.2s;
+        }
+        .footer-links a:hover { color: var(--accent); }
 
-        /* ── Responsive ── */
-        @media (max-width: 640px) {
+        /* Responsive */
+        @media (max-width: 768px) {
             .hero { padding: 6rem 1.5rem 4rem; }
+            .hero h1 { letter-spacing: -2px; }
             .stats { grid-template-columns: repeat(2, 1fr); margin: 0 1.5rem; }
-            .posts { padding: 3rem 1.5rem; }
+            .about { padding: 3rem 1.5rem 1.5rem; }
+            .about-grid { grid-template-columns: 1fr; }
+            .posts { padding: 2rem 1.5rem 3rem; }
             .post-card { padding: 2rem; }
             .post-arrow { display: none; }
             footer { padding: 2rem 1.5rem; }
+        }
+
+        @media (max-width: 480px) {
+            .hero h1 { font-size: 2.5rem; letter-spacing: -1.5px; }
+            .stat { padding: 1.8rem 1rem; }
+            .stat-number { font-size: 2rem; }
+            .nav-links { gap: 1rem; }
+            .nav-links a { font-size: 0.75rem; }
         }
     </style>
 </head>
@@ -312,52 +411,70 @@
 <div class="content">
 
     <nav>
-        <a href="/" class="nav-name"><span class="nav-dot"></span>Aleksandr Fedorov</a>
-        <div class="nav-links">
-            <a href="/posts/arlc-2026">Article</a>
-            <a href="https://github.com/alexff91" target="_blank">GitHub</a>
-            <a href="https://linkedin.com/in/alexff91" target="_blank">LinkedIn</a>
+        <div class="nav-inner">
+            <a href="/" class="nav-name"><span class="nav-dot"></span>Aleksandr Fedorov</a>
+            <div class="nav-links">
+                <a href="#writing">Writing</a>
+                <a href="https://github.com/alexff91" target="_blank" rel="noopener noreferrer">GitHub</a>
+                <a href="https://linkedin.com/in/alexff91" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+            </div>
         </div>
     </nav>
 
     <section class="hero">
-        <div class="hero-badge">AI Engineer &bull; Dubai AI Week 2026</div>
+        <div class="hero-badge">AI Engineer &bull; Luxembourg</div>
         <h1>I teach<br>computers to<br><span class="gradient">read law.</span></h1>
         <p>
-            Imagine a giant library with thousands of legal pages.
-            I build systems that find the exact right page &mdash; fast.
-            Like a really smart bookmark for lawyers.
+            I build AI systems that navigate thousands of legal pages
+            and find the exact right answer &mdash; fast.
+            Think of it as a really smart bookmark for lawyers.
         </p>
         <div class="hero-buttons">
-            <a href="/posts/arlc-2026" class="btn btn-primary">Read My Story &rarr;</a>
-            <a href="https://github.com/alexff91/legal-champ" target="_blank" class="btn btn-ghost">See the Code</a>
+            <a href="/posts/arlc-2026" class="btn btn-primary">Read My Latest Post &rarr;</a>
+            <a href="https://github.com/alexff91/legal-champ" target="_blank" rel="noopener noreferrer" class="btn btn-ghost">See the Code</a>
         </div>
     </section>
 
     <div class="stats">
         <div class="stat">
-            <div class="stat-icon">&#x1F4DA;</div>
+            <div class="stat-icon">Q&A</div>
             <div class="stat-number">900</div>
             <div class="stat-label">Questions answered</div>
         </div>
         <div class="stat">
-            <div class="stat-icon">&#x1F4C4;</div>
+            <div class="stat-icon">DOC</div>
             <div class="stat-number">298</div>
-            <div class="stat-label">Documents read</div>
+            <div class="stat-label">Documents processed</div>
         </div>
         <div class="stat">
-            <div class="stat-icon">&#x1F3AF;</div>
+            <div class="stat-icon">HIT</div>
             <div class="stat-number">96<span class="unit">%</span></div>
-            <div class="stat-label">Found the right doc</div>
+            <div class="stat-label">Routing accuracy</div>
         </div>
         <div class="stat">
-            <div class="stat-icon">&#x26A1;</div>
+            <div class="stat-icon">RUN</div>
             <div class="stat-number">52<span class="unit">min</span></div>
             <div class="stat-label">Total run time</div>
         </div>
     </div>
 
-    <section class="posts">
+    <section class="about">
+        <div class="section-title">What I Do</div>
+        <div class="about-grid">
+            <div class="about-card">
+                <span class="card-icon">*</span>
+                <h3>Legal AI &amp; RAG Systems</h3>
+                <p>Building retrieval-augmented generation pipelines that process court cases, statutes, and regulations with high precision.</p>
+            </div>
+            <div class="about-card">
+                <span class="card-icon">&gt;_</span>
+                <h3>NLP &amp; Document Intelligence</h3>
+                <p>Pattern matching, document routing, and multi-model architectures for question answering over large document collections.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="posts" id="writing">
         <div class="section-title">Writing</div>
         <a href="/posts/arlc-2026" class="post-card">
             <div class="date">March 22, 2026</div>
@@ -378,7 +495,10 @@
 
     <footer>
         <span>&copy; 2026 Aleksandr Fedorov</span>
-        <span><a href="https://github.com/alexff91">alexff91</a></span>
+        <div class="footer-links">
+            <a href="https://github.com/alexff91" target="_blank" rel="noopener noreferrer">GitHub</a>
+            <a href="https://linkedin.com/in/alexff91" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+        </div>
     </footer>
 
 </div>
