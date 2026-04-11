@@ -89,6 +89,11 @@
         .lesson h4 { font-size: 1.05rem; font-weight: 700; color: #fff; margin-bottom: 0.5rem; }
         .lesson p { margin-bottom: 0; font-size: 0.92rem; }
 
+        .fig { margin: 2.5rem -1rem; background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; transition: transform 0.3s; }
+        .fig:hover { transform: translateY(-2px); box-shadow: 0 12px 40px rgba(0,0,0,0.3); }
+        .fig img { width: 100%; display: block; }
+        .fig figcaption { font-size: 0.82rem; color: var(--muted); padding: 1rem 1.5rem; line-height: 1.5; border-top: 1px solid var(--border); }
+
         code { font-family: 'JetBrains Mono', monospace; font-size: 0.82em; background: rgba(255,255,255,0.06); padding: 0.15em 0.4em; border-radius: 4px; }
         pre { background: #111; border: 1px solid var(--border); border-radius: 10px; padding: 1.3rem 1.5rem; margin: 1.5rem 0; overflow-x: auto; }
         pre code { background: none; padding: 0; font-size: 0.78rem; line-height: 1.7; }
@@ -221,6 +226,11 @@
 
     <p>We tested every model we could access, running parallel sessions on the DEV benchmark:</p>
 
+    <figure class="fig">
+        <img src="img/model_comparison.png" alt="Model comparison on DEV benchmark">
+        <figcaption>Head-to-head model comparison on 43 DEV tasks. Claude Opus scored highest on early PROD (42/43), gpt-5.4 full was best on DEV (40/43).</figcaption>
+    </figure>
+
     <div class="table-wrap">
         <table>
             <thead><tr><th>Model</th><th>DEV Score</th><th>Notes</th></tr></thead>
@@ -234,6 +244,11 @@
             </tbody>
         </table>
     </div>
+
+    <figure class="fig">
+        <img src="img/version_progression.png" alt="Score progression across versions">
+        <figcaption>10 iterations of prompt and architecture changes. V6.2 (agentic content filter retry) and V8.2 (code-level injection scanner) were the biggest jumps.</figcaption>
+    </figure>
 
     <p>* Claude Opus scored 42/43 on the early 43-task PROD, but this was a smaller benchmark before the full 104-task version launched.</p>
 
@@ -262,6 +277,11 @@
         </div>
     </div>
 
+    <figure class="fig">
+        <img src="img/dev_vs_prod.png" alt="DEV vs PROD performance by category">
+        <figcaption>Estimated performance drop across all 8 task categories. Finance and relationship ops had the steepest decline on PROD.</figcaption>
+    </figure>
+
     <p>Our skills were tuned for DEV paths. PROD had completely different folder structure, different people,
        different task types. Finance calculations ("How much did X charge me 123 days ago?"),
        relationship lookups ("In which projects is the ops manager at the tax firm?"),
@@ -284,6 +304,11 @@
 <div class="reveal">
     <div class="section-num">05 &mdash; What Went Wrong</div>
     <h2>Post-Mortem</h2>
+
+    <figure class="fig">
+        <img src="img/failure_analysis.png" alt="Failure analysis DEV vs PROD">
+        <figcaption>DEV failures were specific (invoice format, injection detection). PROD failures were fundamental (complex lookups, multilingual, vault navigation).</figcaption>
+    </figure>
 
     <div class="lesson">
         <div class="lesson-num">Issue 01</div>
@@ -372,6 +397,11 @@
 <div class="reveal">
     <div class="section-num">08 &mdash; By the Numbers</div>
     <h2>Competition Stats</h2>
+
+    <figure class="fig">
+        <img src="img/timeline.png" alt="Competition day timeline">
+        <figcaption>14 hours from setup to results. The 2-hour PROD window was the critical phase &mdash; rate limits and API credit exhaustion made it chaotic.</figcaption>
+    </figure>
 
     <div class="table-wrap">
         <table>
