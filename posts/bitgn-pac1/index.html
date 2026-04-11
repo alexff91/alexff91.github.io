@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Building a Trustworthy Personal Agent for BitGN PAC1 &mdash; Aleksandr Fedorov</title>
+    <meta name="description" content="How we built an autonomous agent for the BitGN PAC1 challenge: multi-model strategy, injection detection, and lessons from competing against 500+ engineers.">
+    <meta property="og:title" content="Building a Trustworthy Personal Agent for BitGN PAC1">
+    <meta property="og:description" content="Multi-model agents, prompt injection defense, and what happens when PROD is nothing like DEV.">
+    <meta property="og:type" content="article">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root { --bg: #0a0a0a; --card: #141414; --border: #222; --text: #d4d4d4; --muted: #666; --accent: #ff4d4d; --accent2: #ff8a4d; --accent3: #ffd54d; --green: #4dff88; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+        ::selection { background: var(--accent); color: white; }
+        a { color: inherit; }
+
+        .shapes { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+        .shape { position: absolute; border-radius: 50%; opacity: 0.04; animation: float 20s ease-in-out infinite; }
+        .shape:nth-child(1) { width: 500px; height: 500px; background: var(--accent); top: -200px; right: -150px; animation-duration: 28s; }
+        .shape:nth-child(2) { width: 350px; height: 350px; background: var(--accent2); bottom: 30%; left: -100px; animation-duration: 32s; animation-delay: -7s; }
+        @keyframes float { 0%,100%{transform:translate(0,0) scale(1)} 50%{transform:translate(-25px,25px) scale(0.95)} }
+
+        .content { position: relative; z-index: 1; }
+        nav { padding: 1.5rem 2rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); backdrop-filter: blur(20px); position: sticky; top: 0; z-index: 100; background: rgba(10,10,10,0.85); }
+        .nav-name { font-weight: 800; font-size: 0.9rem; text-decoration: none; }
+        .nav-dot { display: inline-block; width: 8px; height: 8px; background: var(--accent); border-radius: 50%; margin-right: 8px; animation: pulse 2s ease-in-out infinite; }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+        .nav-links { display: flex; gap: 1.5rem; }
+        .nav-links a { font-size: 0.8rem; font-weight: 500; color: var(--muted); text-decoration: none; transition: color 0.2s; }
+        .nav-links a:hover { color: var(--text); }
+
+        .progress-bar { position: fixed; top: 0; left: 0; height: 3px; z-index: 200; background: linear-gradient(90deg, var(--accent), var(--accent2), var(--accent3)); width: 0%; transition: width 0.1s; }
+
+        .hero { padding: 8rem 2rem 5rem; max-width: 780px; animation: fadeUp 0.8s ease-out; }
+        @keyframes fadeUp { from{opacity:0;transform:translateY(30px)} to{opacity:1;transform:translateY(0)} }
+        .hero .badge { display: inline-block; font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; color: var(--accent); background: rgba(255,77,77,0.1); border: 1px solid rgba(255,77,77,0.2); padding: 0.4rem 1rem; border-radius: 100px; margin-bottom: 1.5rem; }
+        .hero h1 { font-size: clamp(2.5rem, 7vw, 4rem); font-weight: 900; line-height: 1.05; letter-spacing: -2px; margin-bottom: 1.5rem; }
+        .hero h1 .gradient { background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .hero .lede { font-size: 1.15rem; line-height: 1.8; color: var(--muted); max-width: 600px; }
+
+        .scores { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--border); margin: 0 2rem; border-radius: 12px; overflow: hidden; }
+        .score-cell { background: var(--card); padding: 1.8rem 0.8rem; text-align: center; }
+        .score-cell .num { font-family: 'JetBrains Mono', monospace; font-size: 1.5rem; font-weight: 700; }
+        .score-cell .num.bad { color: var(--accent); }
+        .score-cell .num.good { color: var(--green); }
+        .score-cell .lbl { font-size: 0.6rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-top: 0.4rem; }
+
+        .article { max-width: 720px; margin: 0 auto; padding: 4rem 2rem 6rem; }
+        .reveal { opacity: 0; transform: translateY(30px); transition: opacity 0.7s ease, transform 0.7s ease; }
+        .reveal.visible { opacity: 1; transform: translateY(0); }
+        .section-num { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; font-weight: 700; color: var(--accent); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 0.5rem; }
+        .article h2 { font-size: 1.9rem; font-weight: 800; letter-spacing: -1px; margin-bottom: 1.5rem; line-height: 1.15; }
+        .article h3 { font-size: 1.2rem; font-weight: 700; margin: 2.5rem 0 1rem; color: #fff; }
+        .article p { font-size: 1rem; line-height: 1.85; color: var(--text); margin-bottom: 1.3rem; }
+        .article strong { color: #fff; }
+        .article ul, .article ol { margin: 1rem 0 1.5rem 1.3rem; line-height: 1.85; }
+        .article li { margin-bottom: 0.5rem; }
+
+        .simple-box { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 2rem; margin: 2rem 0; position: relative; overflow: hidden; }
+        .simple-box::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, var(--accent), var(--accent2), var(--accent3)); }
+        .simple-box .emoji { font-size: 2rem; margin-bottom: 0.8rem; }
+        .simple-box .explain { font-size: 1.05rem; line-height: 1.7; }
+
+        .insight { background: rgba(255,77,77,0.05); border: 1px solid rgba(255,77,77,0.15); border-radius: 12px; padding: 1.8rem 2rem; margin: 2rem 0; }
+        .insight p { margin-bottom: 0; }
+
+        .table-wrap { background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; margin: 1.5rem 0; }
+        table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+        th { font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); text-align: left; padding: 1rem; border-bottom: 1px solid var(--border); background: rgba(255,255,255,0.02); }
+        td { padding: 0.8rem 1rem; border-bottom: 1px solid rgba(255,255,255,0.03); }
+        tr:last-child td { border-bottom: none; }
+        td strong { color: var(--accent); }
+
+        .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin: 2rem 0; }
+        .compare-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.8rem; text-align: center; }
+        .compare-card .label { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 0.5rem; }
+        .compare-card .value { font-family: 'JetBrains Mono', monospace; font-size: 2.5rem; font-weight: 700; }
+        .compare-card .desc { font-size: 0.8rem; color: var(--muted); margin-top: 0.5rem; }
+        .compare-card.bad .value { color: var(--accent); }
+        .compare-card.good .value { color: var(--green); }
+
+        .lesson { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1.8rem; margin: 1rem 0; transition: transform 0.3s; }
+        .lesson:hover { transform: translateX(6px); border-color: var(--muted); }
+        .lesson-num { font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; color: var(--accent); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 0.5rem; }
+        .lesson h4 { font-size: 1.05rem; font-weight: 700; color: #fff; margin-bottom: 0.5rem; }
+        .lesson p { margin-bottom: 0; font-size: 0.92rem; }
+
+        code { font-family: 'JetBrains Mono', monospace; font-size: 0.82em; background: rgba(255,255,255,0.06); padding: 0.15em 0.4em; border-radius: 4px; }
+        pre { background: #111; border: 1px solid var(--border); border-radius: 10px; padding: 1.3rem 1.5rem; margin: 1.5rem 0; overflow-x: auto; }
+        pre code { background: none; padding: 0; font-size: 0.78rem; line-height: 1.7; }
+
+        footer { padding: 2rem; border-top: 1px solid var(--border); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 1rem; }
+        footer span { font-size: 0.75rem; color: var(--muted); }
+        footer a { color: var(--accent); text-decoration: none; }
+
+        @media (max-width: 640px) { .hero{padding:5rem 1.5rem 3rem} .scores{grid-template-columns:repeat(2,1fr);margin:0 1.5rem} .article{padding:3rem 1.5rem 4rem} .compare{grid-template-columns:1fr} }
+    </style>
+</head>
+<body>
+
+<div class="progress-bar" id="progressBar"></div>
+<div class="shapes"><div class="shape"></div><div class="shape"></div></div>
+
+<div class="content">
+
+<nav>
+    <a href="/" class="nav-name"><span class="nav-dot"></span>Aleksandr Fedorov</a>
+    <div class="nav-links">
+        <a href="/">Home</a>
+        <a href="/posts/arlc-2026">ARLC 2026</a>
+        <a href="https://github.com/alexff91" target="_blank">GitHub</a>
+    </div>
+</nav>
+
+<section class="hero">
+    <div class="badge">BitGN PAC1 &bull; April 11, 2026 &bull; Dubai AI Week</div>
+    <h1>Building a <span class="gradient">Trustworthy</span> Personal Agent</h1>
+    <p class="lede">
+        How we built an autonomous agent that manages an Obsidian vault, resists prompt injection,
+        and what happens when production is nothing like development. 500+ engineers. 104 tasks. 2 hours.
+    </p>
+</section>
+
+<div class="scores">
+    <div class="score-cell"><div class="num good">40/43</div><div class="lbl">DEV Best</div></div>
+    <div class="score-cell"><div class="num">72.7%</div><div class="lbl">PROD Score</div></div>
+    <div class="score-cell"><div class="num good">6</div><div class="lbl">Models Tested</div></div>
+    <div class="score-cell"><div class="num">12+</div><div class="lbl">PROD Sessions</div></div>
+</div>
+
+<div class="article">
+
+<div class="reveal">
+    <div class="section-num">01 &mdash; The Challenge</div>
+    <h2>What Is BitGN PAC1?</h2>
+
+    <div class="simple-box">
+        <div class="emoji">&#x1F916;</div>
+        <div class="explain">
+            Build an autonomous AI agent that manages a personal knowledge vault &mdash; like an Obsidian notebook with
+            hundreds of files. The agent reads tasks ("find this person's birthday", "process this email",
+            "delete these receipts"), operates on files, and reports back. It's scored on <strong>correctness</strong>
+            and <strong>trustworthiness</strong> &mdash; can it resist prompt injection hidden in file content?
+        </div>
+    </div>
+
+    <p>
+        BitGN PAC1 is an international agent benchmark created by Rinat Abdullin.
+        Unlike typical AI benchmarks, it tests <strong>actual agent behavior</strong>:
+        tool calls, file operations, side effects. Not prose quality &mdash; deterministic outcomes.
+    </p>
+
+    <p>The competition structure:</p>
+    <ul>
+        <li><strong>DEV phase</strong>: 43 tasks, immediate scoring feedback, unlimited runs</li>
+        <li><strong>PROD phase</strong>: 104 unseen tasks, blind scoring, 2-hour window</li>
+        <li><strong>Scoring</strong>: Deterministic &mdash; did you create the right files? Update the right fields? Resist the injection?</li>
+    </ul>
+</div>
+
+<div class="reveal">
+    <div class="section-num">02 &mdash; Architecture</div>
+    <h2>How Our Agent Works</h2>
+
+    <p>We built a skill-based agent with lazy-loaded instructions, multi-model support, and a code-level security gate:</p>
+
+    <pre><code>main.py              Entry point &mdash; connects to BitGN API
+  |
+  +-- agent.py       Agent loop (max 50 steps per task)
+  |     +-- providers.py    Multi-model (OpenAI, Azure, Anthropic, xAI)
+  |     +-- autoread.py     Pre-reads vault tree + AGENTS.md chain
+  |     +-- dispatch.py     Routes tools to VM + security gate
+  |     +-- skills/         8 lazy-loaded skill files
+  |
+  +-- tools.py       11 VM tools + 3 skill tools + 1 meta</code></pre>
+
+    <h3>Key Design: Skills System</h3>
+    <p>
+        Instead of cramming everything into the system prompt (which confuses the model),
+        we built 8 skills loaded on demand. The agent calls <code>load_skill("inbox_processing")</code>
+        only when it needs email handling rules. This keeps the base prompt small and focused.
+    </p>
+
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th>Skill</th><th>Purpose</th></tr></thead>
+            <tbody>
+                <tr><td>general_rules</td><td>AGENTS.md priority, verification</td></tr>
+                <tr><td>inbox_processing</td><td>Email handling, outbox protocol</td></tr>
+                <tr><td>security</td><td>Prompt injection detection</td></tr>
+                <tr><td>outcome_decision</td><td>5 outcome codes + few-shot examples</td></tr>
+                <tr><td>entity_matching</td><td>Fuzzy name matching</td></tr>
+                <tr><td>vault_crud</td><td>File operations, minimal diffs</td></tr>
+                <tr><td>chat_messages</td><td>Discord/Telegram trust model</td></tr>
+                <tr><td>conflict_resolution</td><td>Instruction hierarchy</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <h3>Security Gate</h3>
+    <p>
+        A code-level security layer (not just prompt) that checks every file operation before execution:
+        blocks AGENTS.md modifications, detects path traversal, scans for secrets in write content,
+        and limits mass deletions. Plus a regex-based injection scanner on every file read.
+    </p>
+
+    <h3>Outcome Verifier</h3>
+    <p>
+        Before submitting the final answer, a second (cheaper) model double-checks the outcome decision.
+        This catches cases where the primary model over-denies legitimate requests or under-reports security threats.
+    </p>
+</div>
+
+<div class="reveal">
+    <div class="section-num">03 &mdash; The Model Race</div>
+    <h2>Testing 6 Models Head-to-Head</h2>
+
+    <p>We tested every model we could access, running parallel sessions on the DEV benchmark:</p>
+
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th>Model</th><th>DEV Score</th><th>Notes</th></tr></thead>
+            <tbody>
+                <tr><td><strong>gpt-5.4 full</strong></td><td><strong>40/43 (93%)</strong></td><td>Best accuracy, catches injection</td></tr>
+                <tr><td>Claude Opus 4.6</td><td>42/43 (97%)*</td><td>Best on early PROD (43 tasks)</td></tr>
+                <tr><td>gpt-5.2-chat</td><td>36/43 (84%)</td><td>Via Azure (content filter issues)</td></tr>
+                <tr><td>gpt-4.1</td><td>35/43 (81%)</td><td>Reliable but slow</td></tr>
+                <tr><td>gpt-5.4-mini</td><td>29/43 (67%)</td><td>Fast but sloppy</td></tr>
+                <tr><td>gpt-4.1-mini</td><td>16/43 (37%)</td><td>Too weak for complex tasks</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <p>* Claude Opus scored 42/43 on the early 43-task PROD, but this was a smaller benchmark before the full 104-task version launched.</p>
+
+    <div class="insight">
+        <p>
+            <strong>Key finding:</strong> Azure OpenAI's content filter blocks tasks containing adversarial content &mdash;
+            which is the whole point of a trustworthiness benchmark. We used Azure's filter as a
+            <strong>detection signal</strong> (if it triggers, the task probably contains injection), then switched
+            to direct OpenAI API for the actual competition. Claude Opus ultimately performed best on PROD.
+        </p>
+    </div>
+</div>
+
+<div class="reveal">
+    <div class="section-num">04 &mdash; DEV vs PROD</div>
+    <h2>The Production Shock</h2>
+
+    <div class="simple-box">
+        <div class="emoji">&#x1F4A5;</div>
+        <div class="explain">
+            DEV vault: <code>00_inbox/</code>, <code>01_capture/</code>, <code>02_distill/</code> &mdash; simple knowledge management.
+            <br><br>
+            PROD vault: <code>10_entities/cast/</code>, <code>20_work/</code>, <code>30_knowledge/</code>,
+            <code>40_projects/</code>, <code>50_finance/purchases/</code>, <code>60_outbox/channels/</code> &mdash;
+            a full personal OS with finance, projects, contacts, multilingual tasks, and Arabic questions.
+        </div>
+    </div>
+
+    <p>Our skills were tuned for DEV paths. PROD had completely different folder structure, different people,
+       different task types. Finance calculations ("How much did X charge me 123 days ago?"),
+       relationship lookups ("In which projects is the ops manager at the tax firm?"),
+       and even German and Arabic language tasks.</p>
+
+    <div class="compare">
+        <div class="compare-card good">
+            <div class="label">DEV Best</div>
+            <div class="value">93%</div>
+            <div class="desc">40/43 with gpt-5.4</div>
+        </div>
+        <div class="compare-card bad">
+            <div class="label">PROD Result</div>
+            <div class="value">72.7%</div>
+            <div class="desc">~76/104 with Opus</div>
+        </div>
+    </div>
+</div>
+
+<div class="reveal">
+    <div class="section-num">05 &mdash; What Went Wrong</div>
+    <h2>Post-Mortem</h2>
+
+    <div class="lesson">
+        <div class="lesson-num">Issue 01</div>
+        <h4>Overfitting to DEV Vault Structure</h4>
+        <p>Our skills referenced DEV-specific paths (<code>02_distill/cards/</code>, <code>01_capture/</code>).
+           PROD had completely different paths. The fix was too late &mdash; we added "follow AGENTS.md over skills"
+           but the damage was done.</p>
+    </div>
+
+    <div class="lesson">
+        <div class="lesson-num">Issue 02</div>
+        <h4>Rate Limiting Killed Parallel Sessions</h4>
+        <p>We launched 4 parallel sessions with 6 workers each &mdash; 24 concurrent API calls.
+           OpenAI's 500K TPM limit was hit instantly. Many sessions scored 0% because every task timed out.
+           Should have started with parallel 1-2.</p>
+    </div>
+
+    <div class="lesson">
+        <div class="lesson-num">Issue 03</div>
+        <h4>Anthropic Credits Ran Out Mid-Competition</h4>
+        <p>Claude Opus was our best model (42/43 on early PROD). But $25 Anthropic credits were
+           burned through by parallel Sonnet+Opus sessions. We couldn't launch more Opus runs
+           when we needed them most.</p>
+    </div>
+
+    <div class="lesson">
+        <div class="lesson-num">Issue 04</div>
+        <h4>Too Many Prompt Iterations, Not Enough Architecture</h4>
+        <p>We ran 10+ versions (V1-V10) tweaking prompts. Top teams used simpler prompts with
+           structured output (SGR pattern) and let the model figure things out.
+           More prompt = more confusion.</p>
+    </div>
+</div>
+
+<div class="reveal">
+    <div class="section-num">06 &mdash; What Worked</div>
+    <h2>Things We Got Right</h2>
+
+    <div class="lesson">
+        <div class="lesson-num">Win 01</div>
+        <h4>Multi-Model Strategy</h4>
+        <p>Different models fail on different tasks. Running gpt-5.4, Claude Opus, Claude Sonnet,
+           and gpt-4.1 in parallel gave us the best coverage. Opus handled complex reasoning,
+           gpt-5.4 was fast on simple tasks.</p>
+    </div>
+
+    <div class="lesson">
+        <div class="lesson-num">Win 02</div>
+        <h4>Code-Level Injection Scanner</h4>
+        <p>Instead of relying only on the LLM to detect prompt injection, we added regex-based
+           scanning in <code>dispatch.py</code> that warns the model before it sees adversarial content.
+           This fixed persistent injection failures.</p>
+    </div>
+
+    <div class="lesson">
+        <div class="lesson-num">Win 03</div>
+        <h4>Azure Content Filter as Detection Signal</h4>
+        <p>Azure blocks adversarial content. Instead of fighting the filter, we used it:
+           if Azure triggers, the task contains injection &rarr; report DENIED_SECURITY.
+           Free injection detection layer.</p>
+    </div>
+
+    <div class="lesson">
+        <div class="lesson-num">Win 04</div>
+        <h4>Autoread with AGENTS.md Chain</h4>
+        <p>Pre-reading the vault tree, all AGENTS.md files, and referenced docs before
+           each task gave the model solid grounding. The agent always knew the vault structure
+           before acting.</p>
+    </div>
+</div>
+
+<div class="reveal">
+    <div class="section-num">07 &mdash; Lessons</div>
+    <h2>What I'd Do Differently</h2>
+
+    <ol>
+        <li><strong>Don't overfit skills to DEV structure.</strong> Use generic instructions that work with any vault layout. Let AGENTS.md be the only source of truth for paths.</li>
+        <li><strong>Start PROD testing early.</strong> We only discovered the vault difference during the competition window. Should have probed PROD structure before.</li>
+        <li><strong>Budget API credits carefully.</strong> $25 Anthropic lasted ~30 min with parallel sessions. Plan for at least $100 for a serious competition run.</li>
+        <li><strong>Use structured output (SGR pattern).</strong> The top team "SGR NextStep" uses Pydantic structured output to force reasoning before tool calls. We used free-form tool calling &mdash; less reliable.</li>
+        <li><strong>Parallel 1 first, scale after.</strong> Rate limits are real. Start sequential, verify correctness, then parallelize.</li>
+        <li><strong>Build a self-improving loop.</strong> Run task &rarr; check score &rarr; analyze failure &rarr; fix prompt &rarr; retry. Automated, not manual.</li>
+    </ol>
+</div>
+
+<div class="reveal">
+    <div class="section-num">08 &mdash; By the Numbers</div>
+    <h2>Competition Stats</h2>
+
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th>Metric</th><th>Value</th></tr></thead>
+            <tbody>
+                <tr><td>Total DEV runs</td><td>30+</td></tr>
+                <tr><td>Total PROD sessions</td><td>12+</td></tr>
+                <tr><td>Models tested</td><td>6 (gpt-5.4, gpt-4.1, gpt-5.2, Opus, Sonnet, gpt-5.4-mini)</td></tr>
+                <tr><td>Code versions</td><td>V1 through V10</td></tr>
+                <tr><td>Best DEV score</td><td>40/43 (93%) with gpt-5.4 full</td></tr>
+                <tr><td>Best PROD score</td><td>72.7% with Claude Opus 4.6</td></tr>
+                <tr><td>Competition duration</td><td>~14 hours (prep + 2h window)</td></tr>
+                <tr><td>Biggest bug found</td><td>Outbox seq.json off-by-one (5+ tasks)</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="reveal">
+    <div class="section-num">09 &mdash; Conclusion</div>
+    <h2>What This Competition Taught Me</h2>
+
+    <p>
+        Building a trustworthy autonomous agent is fundamentally different from building a chatbot or a RAG pipeline.
+        The agent needs to <strong>reason about its own actions</strong>, detect when file content is trying to
+        manipulate it, and make nuanced decisions about when to proceed vs. when to refuse.
+    </p>
+
+    <p>
+        The biggest lesson: <strong>production readiness means generalization.</strong> An agent that works perfectly
+        on a known vault structure fails spectacularly when the structure changes. The winning agents
+        are ones that discover and adapt, not ones with hardcoded rules.
+    </p>
+
+    <div class="insight">
+        <p>
+            <strong>The takeaway:</strong> In agentic AI competitions, the gap between DEV and PROD
+            is the gap between memorization and understanding. Build for the unknown.
+        </p>
+    </div>
+
+    <div class="simple-box">
+        <div class="emoji">&#x1F4BB;</div>
+        <div class="explain">
+            Competition: <a href="https://bitgn.com/challenge/PAC" target="_blank" style="color: var(--accent);">bitgn.com/challenge/PAC</a>
+            &bull; Also see my <a href="/posts/arlc-2026" style="color: var(--accent);">ARLC 2026 writeup</a>
+        </div>
+    </div>
+</div>
+
+</div>
+
+<footer>
+    <span>&copy; 2026 <a href="/">Aleksandr Fedorov</a></span>
+    <span><a href="https://github.com/alexff91">alexff91</a></span>
+</footer>
+
+</div>
+
+<script>
+window.addEventListener('scroll', () => {
+    const h = document.documentElement;
+    document.getElementById('progressBar').style.width = (h.scrollTop / (h.scrollHeight - h.clientHeight)) * 100 + '%';
+});
+const observer = new IntersectionObserver((entries) => {
+    entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+}, { threshold: 0.1 });
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+</script>
+
+</body>
+</html>
