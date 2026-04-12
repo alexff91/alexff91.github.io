@@ -132,9 +132,9 @@
 
 <div class="scores">
     <div class="score-cell"><div class="num good">40/43</div><div class="lbl">DEV Best</div></div>
-    <div class="score-cell"><div class="num">72.7%</div><div class="lbl">PROD Score</div></div>
+    <div class="score-cell"><div class="num">75.6/104</div><div class="lbl">PROD Score</div></div>
+    <div class="score-cell"><div class="num">~25th</div><div class="lbl">PROD Place</div></div>
     <div class="score-cell"><div class="num good">6</div><div class="lbl">Models Tested</div></div>
-    <div class="score-cell"><div class="num">12+</div><div class="lbl">PROD Sessions</div></div>
 </div>
 
 <div class="article">
@@ -302,7 +302,48 @@
 </div>
 
 <div class="reveal">
-    <div class="section-num">05 &mdash; What Went Wrong</div>
+    <div class="section-num">05 &mdash; Final Standings</div>
+    <h2>Where We Landed</h2>
+
+    <figure class="fig">
+        <img src="img/leaderboard.png" alt="PAC1-PROD Hall of Fame leaderboard">
+        <figcaption>Final PROD leaderboard. Top score: 92/104 (88.5%). Our Opus run landed around 25th with 75.6/104 (72.7%). Nobody achieved 100%.</figcaption>
+    </figure>
+
+    <p>The PROD leaderboard revealed that <strong>nobody scored 100%</strong>. The top team (Operation Pangolin) hit 92/104 (88.5%). PROD was genuinely hard for everyone.</p>
+
+    <div class="table-wrap">
+        <table>
+            <thead><tr><th>#</th><th>Team</th><th>Score</th><th>%</th></tr></thead>
+            <tbody>
+                <tr><td>1</td><td><strong>Operation Pangolin</strong></td><td>92.0/104</td><td>88.5%</td></tr>
+                <tr><td>2</td><td>big_buba_kolbasuba</td><td>89.6/104</td><td>86.2%</td></tr>
+                <tr><td>3</td><td>codex-on-rails</td><td>87.0/104</td><td>83.7%</td></tr>
+                <tr><td>4</td><td>rust-blind</td><td>86.0/104</td><td>82.7%</td></tr>
+                <tr><td>5</td><td>Hack'n'Vibe</td><td>86.0/104</td><td>82.7%</td></tr>
+                <tr><td>10</td><td>pac1-py-run</td><td>82.0/104</td><td>78.8%</td></tr>
+                <tr><td>20</td><td>Krestnikov</td><td>~78/104</td><td>~75%</td></tr>
+                <tr><td><strong>~25</strong></td><td><strong>PetitionStack (us)</strong></td><td><strong>75.6/104</strong></td><td><strong>72.7%</strong></td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="insight">
+        <p>
+            <strong>The gap:</strong> 16 points between us (72.7%) and 1st place (88.5%). On DEV we scored 93% &mdash;
+            the drop was entirely from PROD vault mismatch. Our skills were hardcoded for DEV paths
+            (<code>02_distill/cards/</code>) that didn't exist in PROD (<code>30_knowledge/notes/</code>).
+            A vault-agnostic approach would have put us in the top 10.
+        </p>
+    </div>
+
+    <p>Notable: the top team scored 88.5%, not 100%. Even with a 2-hour window and unlimited runs,
+       the 104-task PROD benchmark was a genuine challenge. Tasks involving finance calculations,
+       multilingual questions (Arabic, German), and complex relationship lookups were hard for every team.</p>
+</div>
+
+<div class="reveal">
+    <div class="section-num">06 &mdash; What Went Wrong</div>
     <h2>Post-Mortem</h2>
 
     <figure class="fig">
@@ -344,7 +385,7 @@
 </div>
 
 <div class="reveal">
-    <div class="section-num">06 &mdash; What Worked</div>
+    <div class="section-num">07 &mdash; What Worked</div>
     <h2>Things We Got Right</h2>
 
     <div class="lesson">
@@ -381,7 +422,7 @@
 </div>
 
 <div class="reveal">
-    <div class="section-num">07 &mdash; Lessons</div>
+    <div class="section-num">08 &mdash; Lessons</div>
     <h2>What I'd Do Differently</h2>
 
     <ol>
@@ -395,7 +436,7 @@
 </div>
 
 <div class="reveal">
-    <div class="section-num">08 &mdash; By the Numbers</div>
+    <div class="section-num">09 &mdash; By the Numbers</div>
     <h2>Competition Stats</h2>
 
     <figure class="fig">
@@ -421,7 +462,7 @@
 </div>
 
 <div class="reveal">
-    <div class="section-num">09 &mdash; Conclusion</div>
+    <div class="section-num">10 &mdash; Conclusion</div>
     <h2>What This Competition Taught Me</h2>
 
     <p>
